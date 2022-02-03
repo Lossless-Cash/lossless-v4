@@ -8,7 +8,7 @@ const { expect } = require('chai');
 const exp = require('constants');
 const path = require('path');
 const { getEnabledCategories } = require('trace_events');
-const { setupAddresses, setupEnvironment, setupToken } = require('../utils');
+const { setupAddresses, setupEnvironment, setupToken } = require('../../utils');
 
 let adr;
 let env;

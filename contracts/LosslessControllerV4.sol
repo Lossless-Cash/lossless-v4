@@ -5,15 +5,17 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../Interfaces/ILosslessERC20.sol";
-import "../Interfaces/ILosslessGovernance.sol";
-import "../Interfaces/ILosslessStaking.sol";
-import "../Interfaces/ILosslessReporting.sol";
-import "../Interfaces/IProtectionStrategy.sol";
+import "./Interfaces/ILosslessERC20.sol";
+import "./Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/ILosslessStaking.sol";
+import "./Interfaces/ILosslessReporting.sol";
+import "./Interfaces/IProtectionStrategy.sol";
+
+import "hardhat/console.sol";
 
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
-contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
+contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
     
     // IMPORTANT!: For future reference, when adding new variables for following versions of the controller. 
     // All the previous ones should be kept in place and not change locations, types or names.
@@ -79,6 +81,10 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
 
+    // --- EVENTS ---
+
+    event Burn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
+
     // --- MODIFIERS ---
 
     /// @notice Avoids execution from other than the Recovery Admin
@@ -121,7 +127,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     /// @notice This function will return the contract version 
     function getVersion() external pure returns (uint256) {
-        return 3;
+        return 4;
     }
 
         // --- V2 VIEWS ---
@@ -540,7 +546,10 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
 
-    function beforeBurn(address _account, uint256 _amount) override external {}
+    function beforeBurn(address _account, uint256 _amount) override external {
+        emit Burn(ILERC20(msg.sender), _account, _amount);
+    }
+
 
     function beforeIncreaseAllowance(address _msgSender, address _spender, uint256 _addedValue) override external {}
 
@@ -557,7 +566,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     function afterBurn(address _account, uint256 _amount) external {}
 
-    function afterTransfer(address _sender, address _recipient, uint256 _amount) external {}
+    function afterTransfer(address _sender, address _recipient, uint256 _amount) override external {}
 
     function afterTransferFrom(address _msgSender, address _sender, address _recipient, uint256 _amount) external {}
 

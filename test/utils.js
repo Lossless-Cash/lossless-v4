@@ -2,6 +2,7 @@
 /* eslint-disable arrow-body-style */
 /* eslint-disable no-await-in-loop */
 const { time } = require('@openzeppelin/test-helpers');
+const { ethers } = require('hardhat');
 
 const setupAddresses = async () => {
   const [
@@ -106,8 +107,8 @@ const setupEnvironment = async (
     'LosslessControllerV2',
   );
 
-  const LosslessControllerV3 = await ethers.getContractFactory(
-    'LosslessControllerV3',
+  const LosslessControllerV4 = await ethers.getContractFactory(
+    'LosslessControllerV4',
   );
 
   const losslessControllerV1 = await upgrades.deployProxy(
@@ -122,7 +123,7 @@ const setupEnvironment = async (
 
   const lssController = await upgrades.upgradeProxy(
     losslessControllerV2.address,
-    LosslessControllerV3,
+    LosslessControllerV4,
   );
 
   const StakingToken = await ethers.getContractFactory('LERC20');
@@ -243,8 +244,29 @@ const setupToken = async (
   return deployedToken;
 };
 
+const setupBurnableToken = async (
+  supply,
+  name,
+  symbol,
+  initialHolder,
+  admin,
+  backupAdmin,
+  lockPeriod,
+  controller,
+) => {
+  const token = await ethers.getContractFactory('LERC20BurnableMock');
+
+  const deployedToken = await token
+    .connect(initialHolder)
+    .deploy(supply, name, symbol, admin, backupAdmin, lockPeriod, controller);
+
+  return deployedToken;
+};
+
+
 module.exports = {
   setupAddresses,
   setupEnvironment,
   setupToken,
+  setupBurnableToken,
 };
