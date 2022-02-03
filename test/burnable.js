@@ -14,7 +14,7 @@ const scriptName = path.basename(__filename, '.js');
 
 const lerc20InitialSupply = 2000000;
 
-describe.only(scriptName, () => {
+describe(scriptName, () => {
   beforeEach(async () => {
     adr = await setupAddresses();
     env = await setupEnvironment(adr.lssAdmin,
@@ -77,6 +77,28 @@ describe.only(scriptName, () => {
       expect(
         await lerc20BurnableToken.balanceOf(adr.regularUser1.address),
       ).to.be.equal(10000);
+    });
+  });
+
+  describe('when reported tries to burn tokens', () => {
+    it('it should revert', async () => {
+      
+      await env.lssToken.connect(adr.lssInitialHolder)
+      .transfer(adr.reporter1.address, env.stakingAmount);
+
+      await env.lssToken.connect(adr.reporter1).approve(env.lssReporting.address, env.stakingAmount);
+
+      await lerc20BurnableToken.connect(adr.lerc20InitialHolder).transfer(adr.maliciousActor1.address, 20000);
+
+      await env.lssReporting.connect(adr.reporter1).report(lerc20BurnableToken.address, adr.maliciousActor1.address);
+
+      expect(
+        await lerc20BurnableToken.balanceOf(adr.maliciousActor1.address),
+      ).to.be.equal(20000);
+      
+      await expect(
+        lerc20BurnableToken.connect(adr.maliciousActor1).burn(20000),
+      ).to.be.revertedWith('LSS: Cannot burn in blacklist');
     });
   });
 });

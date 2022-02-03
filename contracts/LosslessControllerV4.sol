@@ -547,6 +547,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
 
     function beforeBurn(address _account, uint256 _amount) override external {
+        require(!blacklist[_account], "LSS: Cannot burn in blacklist");
         emit Burn(ILERC20(msg.sender), _account, _amount);
     }
 
