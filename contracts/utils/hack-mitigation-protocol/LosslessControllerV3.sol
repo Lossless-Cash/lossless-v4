@@ -5,17 +5,15 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./Interfaces/ILosslessStaking.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/IProtectionStrategy.sol";
-
-import "hardhat/console.sol";
+import "../../Interfaces/ILosslessERC20.sol";
+import "../../Interfaces/ILosslessGovernance.sol";
+import "../../Interfaces/ILosslessStaking.sol";
+import "../../Interfaces/ILosslessReporting.sol";
+import "../../Interfaces/IProtectionStrategy.sol";
 
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
-contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
+contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
     
     // IMPORTANT!: For future reference, when adding new variables for following versions of the controller. 
     // All the previous ones should be kept in place and not change locations, types or names.
@@ -81,11 +79,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
 
-    // --- EVENTS ---
-
-    event Mint(ILERC20 indexed token, address indexed account, uint256 indexed amount);
-    event Burn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
-
     // --- MODIFIERS ---
 
     /// @notice Avoids execution from other than the Recovery Admin
@@ -128,7 +121,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     /// @notice This function will return the contract version 
     function getVersion() external pure returns (uint256) {
-        return 4;
+        return 3;
     }
 
         // --- V2 VIEWS ---
@@ -543,19 +536,11 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     // The following before hooks are in place as a placeholder for future products.
     // Also to preserve legacy LERC20 compatibility
     
-    function beforeMint(address _to, uint256 _amount) override external {
-      require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
-      require(!blacklist[msg.sender], "LSS: Blacklisted cannot mint");
-      emit Mint(ILERC20(msg.sender), _to, _amount);
-    }
-
-
-    function beforeBurn(address _account, uint256 _amount) override external {
-        require(!blacklist[_account], "LSS: Cannot burn in blacklist");
-        emit Burn(ILERC20(msg.sender), _account, _amount);
-    }
+    function beforeMint(address _to, uint256 _amount) override external {}
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
+
+    function beforeBurn(address _account, uint256 _amount) override external {}
 
     function beforeIncreaseAllowance(address _msgSender, address _spender, uint256 _addedValue) override external {}
 

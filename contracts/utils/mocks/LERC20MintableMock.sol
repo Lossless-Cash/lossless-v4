@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "../LERC20Mintable.sol";
+import "../../LERC20Mintable.sol";
 
 contract LERC20MintableMock is LERC20Mintable {
     constructor(

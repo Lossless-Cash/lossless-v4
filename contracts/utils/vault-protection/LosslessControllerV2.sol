@@ -5,8 +5,8 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../Interfaces/ILosslessERC20.sol";
-import "../Interfaces/IProtectionStrategy.sol";
+import "../../Interfaces/ILosslessERC20.sol";
+import "../../Interfaces/IProtectionStrategy.sol";
 
 contract LosslessControllerV2 is Initializable, ContextUpgradeable, PausableUpgradeable {
     address public pauseAdmin;

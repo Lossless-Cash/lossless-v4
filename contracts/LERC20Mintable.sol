@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./utils/LERC20.sol";
-import "./utils/Context.sol";
+import "./utils/first-version/LERC20.sol";
+import "./utils/first-version/Context.sol";
 
 abstract contract LERC20Mintable is Context, LERC20 {
 

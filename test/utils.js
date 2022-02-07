@@ -262,10 +262,30 @@ const setupMintableToken = async (
   return deployedToken;
 };
 
+const setupBurnableToken = async (
+  supply,
+  name,
+  symbol,
+  initialHolder,
+  admin,
+  backupAdmin,
+  lockPeriod,
+  controller,
+) => {
+  const token = await ethers.getContractFactory('LERC20BurnableMock');
+
+  const deployedToken = await token
+    .connect(initialHolder)
+    .deploy(supply, name, symbol, admin, backupAdmin, lockPeriod, controller);
+
+  return deployedToken;
+};
+
 
 module.exports = {
   setupAddresses,
   setupEnvironment,
   setupToken,
   setupMintableToken,
+  setupBurnableToken,
 };

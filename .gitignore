@@ -1,4 +1,7 @@
-node_modules
+#Foundry files
+forge_artifacts
+lib
+out
 
 #Hardhat files
 cache
