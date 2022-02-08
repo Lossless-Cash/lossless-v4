@@ -1,6 +1,5 @@
 [default]
 src = 'contracts'
-test = 'test_forge'
 out = 'out'
 libs = ['node_modules']
 remappings = [

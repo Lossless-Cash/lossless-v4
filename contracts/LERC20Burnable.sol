@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./utils/first-version/LERC20.sol";
-import "./utils/first-version/Context.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 
 abstract contract LERC20Burnable is Context, LERC20 {
 

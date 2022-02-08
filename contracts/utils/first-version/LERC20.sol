@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./Context.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 
 import "../../Interfaces/ILosslessERC20.sol";
 import "../../Interfaces/ILosslessController.sol";
