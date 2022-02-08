@@ -1,6 +1,5 @@
 #Foundry files
 forge_artifacts
-lib
 out
 
 #Hardhat files
