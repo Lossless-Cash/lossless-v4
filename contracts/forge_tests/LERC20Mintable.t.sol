@@ -1,63 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "../utils/first-version/LosslessControllerV1.sol";
-import "../LosslessControllerV4.sol";
-import "../utils/mocks/LERC20MintableMock.sol";
-import "ds-test/test.sol";
+import "./utils/LosslessEnv.t.sol";
 
-contract LERC20MitableTests is DSTest {
-    LosslessControllerV1 lssControllerV1;
-    LosslessControllerV4 lssControllerV4;
-    TransparentUpgradeableProxy transparentProxy;
-    ProxyAdmin proxyAdmin;
+contract LERC20MintableTests is LosslessTestEnvironment {
 
-    LERC20MintableMock lerc20Mintable;
-
-    LosslessControllerV4 lssController;
-
-    function setUp() public {
-      
-      lssControllerV1 = new LosslessControllerV1();
-
-      lssControllerV4 = new LosslessControllerV4();
-
-      transparentProxy = new TransparentUpgradeableProxy(address(lssControllerV1), address(this), "");
-
-      proxyAdmin = new ProxyAdmin();
-      
-      transparentProxy.changeAdmin(address(proxyAdmin));
-
-      LosslessControllerV1(address(transparentProxy)).initialize(
-        address(this), 
-        address(this), 
-        address(this));
-
-      proxyAdmin.upgrade(transparentProxy, address(lssControllerV4));
-
-      lssController = LosslessControllerV4(address(transparentProxy));
-
-      lerc20Mintable = new LERC20MintableMock(
-        100000000000,
-        "LERC20 Mintable",
-        "lMINT",
-        address(this),
-        address(this),
-        1 days,
-        address(lssController)
-      );
-    }
-
-    function testControllerDeploy() public {
-      address admin = lssController.admin(); 
-      uint version = lssController.getVersion();
-      assertEq(version , 4);
-      assertEq(admin, address(this));
-    }
-
-    function testLERC20Deploy() public {
+    /// @notice Test deployed Mintable LERC20 variables
+    function testLERC20MintableDeploy() public {
+      assertEq(lerc20Mintable.totalSupply(), 100000000000);
       assertEq(lerc20Mintable.name(), "LERC20 Mintable");
+      assertEq(lerc20Mintable.admin(), address(this));
+      assertEq(lerc20Mintable.recoveryAdmin(), address(this));
+      assertEq(lerc20Mintable.timelockPeriod(), 1 days);
+    }
+
+    /// @notice Test simple mint
+    /// @dev Should not revert
+    /// @param mintAmount Random mint amount
+    function testLERC20Mint(uint256 mintAmount) public {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(address(1));
+      lerc20Mintable.mint(address(1), mintAmount);
+      assertEq(lerc20Mintable.balanceOf(address(1)), balanceBefore + mintAmount);
+    }
+
+    /// @notice Test mint when not admin
+    /// @dev Should revert
+    /// @param randAddress Random address
+    function testFailLERC20MintNonAdmin(address randAddress) public {
+      cheats.startPrank(randAddress);
+      lerc20Mintable.mint(address(1), 1000);
+      cheats.stopPrank();
     }
 }
