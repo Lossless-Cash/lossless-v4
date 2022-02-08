@@ -7,7 +7,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
 
     /// @notice Test deployed Mintable LERC20 variables
     function testLERC20MintableDeploy() public {
-      assertEq(lerc20Mintable.totalSupply(), 100000000000);
+      assertEq(lerc20Mintable.totalSupply(), totalSupply);
       assertEq(lerc20Mintable.name(), "LERC20 Mintable");
       assertEq(lerc20Mintable.admin(), address(this));
       assertEq(lerc20Mintable.recoveryAdmin(), address(this));
@@ -17,17 +17,42 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @notice Test simple mint
     /// @dev Should not revert
     /// @param mintAmount Random mint amount
-    function testLERC20Mint(uint256 mintAmount) public {
-      uint256 balanceBefore = lerc20Mintable.balanceOf(address(1));
-      lerc20Mintable.mint(address(1), mintAmount);
-      assertEq(lerc20Mintable.balanceOf(address(1)), balanceBefore + mintAmount);
+    function testLERC20Mint(uint8 mintAmount, address randAddress) public {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
+      lerc20Mintable.mint(randAddress, mintAmount);
+      assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAmount);
+    }
+
+    /// @notice Test simple mint over limit
+    /// @dev Should not revert
+    /// @param mintAmount Random mint amount
+    function testLERC20MintOverLimit(uint8 mintAmount, address randAddress) public {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
+      cheats.expectRevert("LSS: Token mint per period limit");
+      lerc20Mintable.mint(randAddress, mintAndBurnLimit + 1);
+    }
+
+    /// @notice Test simple mint over limit and mint after a settlement period
+    /// @dev Should not revert
+    /// @param mintAmount Random mint amount
+    function testLERC20MintOverLimitAndWait(uint8 mintAmount, address randAddress) public {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
+      if (randAddress != address(0)) {
+        lerc20Mintable.mint(randAddress, mintAndBurnLimit);
+        cheats.expectRevert("LSS: Token mint per period limit");
+        lerc20Mintable.mint(randAddress, 3);
+        cheats.warp(block.timestamp + settlementPeriod + 1);
+        lerc20Mintable.mint(randAddress, 1000);
+        assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAndBurnLimit + 1000);
+      }
     }
 
     /// @notice Test mint when not admin
     /// @dev Should revert
     /// @param randAddress Random address
-    function testFailLERC20MintNonAdmin(address randAddress) public {
+    function testLERC20MintNonAdmin(address randAddress) public {
       cheats.startPrank(randAddress);
+      cheats.expectRevert("LERC20: Must be admin");
       lerc20Mintable.mint(address(1), 1000);
       cheats.stopPrank();
     }

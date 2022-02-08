@@ -564,4 +564,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
     function afterIncreaseAllowance(address _sender, address _spender, uint256 _addedValue) external {}
 
     function afterDecreaseAllowance(address _sender, address _spender, uint256 _subtractedValue) external {}
+
+    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {}
+    function setTokenMintLimit(ILERC20 _token, uint256 limit) override external {}
 }

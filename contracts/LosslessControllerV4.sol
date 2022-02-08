@@ -77,14 +77,15 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         uint256 proposedTokenLockTimeframe;
         uint256 changeSettlementTimelock;
         uint256 emergencyMode;
+        uint256 mintLimit;
+        uint256 burnLimit;
+        uint256 mintedOnPeriod;
+        uint256 burnedOnPeriod;
+        uint256 mintedTimestamp;
+        uint256 burnedTimestamp;
     }
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
-
-    // --- EVENTS ---
-
-    event Mint(ILERC20 indexed token, address indexed account, uint256 indexed amount);
-    event Burn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
 
     // --- MODIFIERS ---
 
@@ -331,19 +332,42 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         emit EmergencyDeactivation(_token);
     }
 
-   // --- GUARD ---
 
-    // @notice Set a guardian contract.
-    // @dev Guardian contract must be trusted as it has some access rights and can modify controller's state.
+    // --- V4 Setters ---
+    
+    /// @notice This function sets the mint limit per period
+    /// @param _token Token on which the mint limit will be set
+    /// @param _limit Limit of tokens that can be minted
+    function setTokenMintLimit(ILERC20 _token, uint256 _limit) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_limit != tokenConfig[_token].mintLimit, "LSS: Cannot set same value");
+        tokenConfig[_token].mintLimit = _limit;
+        emit NewMintLimit(_token, _limit);
+    }
+    
+    /// @notice This function sets the burn limit per period
+    /// @param _token Token on which the burn limit will be set
+    /// @param _limit Limit of tokens that can be burned
+    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_limit != tokenConfig[_token].burnLimit, "LSS: Cannot set same value");
+        tokenConfig[_token].burnLimit = _limit;
+        emit NewBurnLimit(_token, _limit);
+    }
+
+    // --- GUARD ---
+
+    /// @notice Set a guardian contract.
+    /// @dev Guardian contract must be trusted as it has some access rights and can modify controller's state.
     function setGuardian(address _newGuardian) override external onlyLosslessAdmin whenNotPaused {
         require(_newGuardian != address(0), "LSS: Cannot be zero address");
         emit GuardianSet(guardian, _newGuardian);
         guardian = _newGuardian;
     }
 
-    // @notice Sets protection for an address with the choosen strategy.
-    // @dev Strategies are verified in the guardian contract.
-    // @dev This call is initiated from a strategy, but guardian proxies it.
+    /// @notice Sets protection for an address with the choosen strategy.
+    /// @dev Strategies are verified in the guardian contract.
+    /// @dev This call is initiated from a strategy, but guardian proxies it.
     function setProtectedAddress(ILERC20 _token, address _protectedAddress, ProtectionStrategy _strategy) override external onlyGuardian whenNotPaused {
         Protection storage protection = tokenProtections[_token].protections[_protectedAddress];
         protection.isProtected = true;
@@ -351,9 +375,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         emit NewProtectedAddress(_token, _protectedAddress, address(_strategy));
     }
 
-    // @notice Remove the protection from the address.
-    // @dev Strategies are verified in the guardian contract.
-    // @dev This call is initiated from a strategy, but guardian proxies it.
+    /// @notice Remove the protection from the address.
+    /// @dev Strategies are verified in the guardian contract.
+    /// @dev This call is initiated from a strategy, but guardian proxies it.
     function removeProtectedAddress(ILERC20 _token, address _protectedAddress) override external onlyGuardian whenNotPaused {
         require(isAddressProtected(_token, _protectedAddress), "LSS: Address not protected");
         delete tokenProtections[_token].protections[_protectedAddress];
@@ -544,15 +568,43 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     // Also to preserve legacy LERC20 compatibility
     
     function beforeMint(address _to, uint256 _amount) override external {
-      require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
-      require(!blacklist[msg.sender], "LSS: Blacklisted cannot mint");
-      emit Mint(ILERC20(msg.sender), _to, _amount);
+        require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
+        require(!blacklist[msg.sender], "LSS: Blacklisted cannot mint");
+
+        ILERC20 token = ILERC20(msg.sender);
+
+        TokenConfig storage config = tokenConfig[token]; 
+
+        if (config.mintedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+            config.mintedOnPeriod = _amount;    
+            config.mintedTimestamp = block.timestamp;
+        } else {
+            config.mintedOnPeriod += _amount;
+        }
+        
+        require(config.mintedOnPeriod <= config.mintLimit, "LSS: Token mint per period limit");
+
+        emit NewMint(token, _to, _amount);
     }
 
 
     function beforeBurn(address _account, uint256 _amount) override external {
         require(!blacklist[_account], "LSS: Cannot burn in blacklist");
-        emit Burn(ILERC20(msg.sender), _account, _amount);
+
+        ILERC20 token = ILERC20(msg.sender);
+
+        TokenConfig storage config = tokenConfig[token]; 
+        
+        if (config.burnedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+            config.burnedOnPeriod = _amount;    
+            config.burnedTimestamp = block.timestamp;
+        } else {
+            config.burnedOnPeriod += _amount;
+        }
+
+        require(config.burnedOnPeriod <= config.burnLimit, "LSS: Token burn per period limit");
+
+        emit NewBurn(token, _account, _amount);
     }
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}

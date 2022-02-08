@@ -38,6 +38,8 @@ interface ILssController {
     function setStakingContractAddress(ILssStaking _adr) external;
     function setReportingContractAddress(ILssReporting _adr) external; 
     function setGovernanceContractAddress(ILssGovernance _adr) external;
+    function setTokenMintLimit(ILERC20 _token, uint256 limit) external;
+    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) external;
     function proposeNewSettlementPeriod(ILERC20 _token, uint256 _seconds) external;
     function executeNewSettlementPeriod(ILERC20 _token) external;
     function activateEmergency(ILERC20 _token) external;
@@ -75,4 +77,8 @@ interface ILssController {
     event NewGovernanceContract(ILssGovernance indexed _newAdr);
     event EmergencyActive(ILERC20 indexed _token);
     event EmergencyDeactivation(ILERC20 indexed _token);
+    event NewMint(ILERC20 indexed token, address indexed account, uint256 indexed amount);
+    event NewMintLimit(ILERC20 indexed token, uint256 indexed limit);
+    event NewBurn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
+    event NewBurnLimit(ILERC20 indexed token, uint256 indexed limit);
 }

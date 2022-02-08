@@ -26,6 +26,10 @@ contract LosslessTestEnvironment is DSTest {
 
     CheatCodes public cheats = CheatCodes(HEVM_ADDRESS);
 
+    uint256 public totalSupply = 100000000000000000000;
+    uint256 public mintAndBurnLimit = 99999999;
+    uint256 public settlementPeriod = 600;
+
     function setUp() public {
       
       lssControllerV1 = new LosslessControllerV1();
@@ -48,7 +52,7 @@ contract LosslessTestEnvironment is DSTest {
       lssController = LosslessControllerV4(address(transparentProxy));
 
       lerc20Burnable = new LERC20BurnableMock(
-        100000000000000000000,
+        totalSupply,
         "LERC20 Burnable",
         "lBURN",
         address(this),
@@ -58,7 +62,7 @@ contract LosslessTestEnvironment is DSTest {
       );
 
       lerc20Mintable = new LERC20MintableMock(
-        100000000000,
+        totalSupply,
         "LERC20 Mintable",
         "lMINT",
         address(this),
@@ -66,6 +70,16 @@ contract LosslessTestEnvironment is DSTest {
         1 days,
         address(lssController)
       );
+
+      // Set up tokens
+      lssController.setTokenMintLimit(lerc20Mintable, mintAndBurnLimit);
+      lssController.proposeNewSettlementPeriod(lerc20Mintable, settlementPeriod);
+
+      lssController.setTokenBurnLimit(lerc20Burnable, mintAndBurnLimit);
+      lssController.proposeNewSettlementPeriod(lerc20Burnable, settlementPeriod);
+
+      lssController.executeNewSettlementPeriod(lerc20Mintable);
+      lssController.executeNewSettlementPeriod(lerc20Burnable);
     }
 
     /// @notice Test deployed controller variables
