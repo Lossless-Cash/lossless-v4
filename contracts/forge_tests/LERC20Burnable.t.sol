@@ -22,11 +22,11 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         assertTrue(true);
       } else {
         lerc20Burnable.transfer(randAddress, burnAmount + 10000);
-        cheats.warp(block.timestamp + settlementPeriod + 1);
+        evm.warp(block.timestamp + settlementPeriod + 1);
         uint256 balanceBefore = lerc20Burnable.balanceOf(randAddress);
-        cheats.startPrank(randAddress);
+        evm.startPrank(randAddress);
         lerc20Burnable.burn(burnAmount);
-        cheats.stopPrank();
+        evm.stopPrank();
         assertEq(lerc20Burnable.balanceOf(randAddress), balanceBefore - burnAmount);
       }
     }
@@ -39,10 +39,10 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
 
       lerc20Burnable.transfer(randAddress, mintAndBurnLimit + 1);
     
-      cheats.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + settlementPeriod + 1);
 
-      cheats.prank(randAddress);
-      cheats.expectRevert("LSS: Token burn per period limit");
+      evm.prank(randAddress);
+      evm.expectRevert("LSS: Token burn per period limit");
       lerc20Burnable.burn(mintAndBurnLimit + 1);
     }
 
@@ -57,13 +57,13 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         lerc20Burnable.transfer(burners[i], burnAmount);
       }
     
-      cheats.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + settlementPeriod + 1);
 
       for (uint i = 0; i < burners.length; i++) {
-        cheats.prank(burners[i]);
+        evm.prank(burners[i]);
         cummulativeBurn += burnAmount;
         if (cummulativeBurn >= mintAndBurnLimit + 1) {
-          cheats.expectRevert("LSS: Token burn per period limit");
+          evm.expectRevert("LSS: Token burn per period limit");
         }
         lerc20Burnable.burn(burnAmount);
       }
@@ -76,7 +76,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
     function testLERC20BurnFrom(uint8 burnAmount, address randAddress) public {
       lerc20Burnable.transfer(randAddress, burnAmount + 10000);
       uint256 balanceBefore = lerc20Burnable.balanceOf(randAddress);
-      cheats.prank(randAddress);
+      evm.prank(randAddress);
       lerc20Burnable.approve(address(this), balanceBefore);
       lerc20Burnable.burnFrom(randAddress, burnAmount);
       assertEq(lerc20Burnable.balanceOf(randAddress), balanceBefore - burnAmount);
@@ -87,9 +87,9 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
     /// @param randAddress Random address
     function testLERC20BurnFromNonAdmin(address randAddress) public {
       lerc20Burnable.transfer(address(1), 1500);
-      cheats.startPrank(randAddress);
-      cheats.expectRevert("ERC20: burn amount exceeds allowance");
+      evm.startPrank(randAddress);
+      evm.expectRevert("ERC20: burn amount exceeds allowance");
       lerc20Burnable.burnFrom(address(1), 1000);
-      cheats.stopPrank();
+      evm.stopPrank();
     }
 }

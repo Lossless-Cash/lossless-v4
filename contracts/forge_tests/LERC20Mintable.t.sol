@@ -28,7 +28,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @param mintAmount Random mint amount
     function testLERC20MintOverLimit(uint8 mintAmount, address randAddress) public {
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
-      cheats.expectRevert("LSS: Token mint per period limit");
+      evm.expectRevert("LSS: Token mint per period limit");
       lerc20Mintable.mint(randAddress, mintAndBurnLimit + 1);
     }
 
@@ -39,9 +39,9 @@ contract LERC20MintableTests is LosslessTestEnvironment {
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       if (randAddress != address(0)) {
         lerc20Mintable.mint(randAddress, mintAndBurnLimit);
-        cheats.expectRevert("LSS: Token mint per period limit");
+        evm.expectRevert("LSS: Token mint per period limit");
         lerc20Mintable.mint(randAddress, 3);
-        cheats.warp(block.timestamp + settlementPeriod + 1);
+        evm.warp(block.timestamp + settlementPeriod + 1);
         lerc20Mintable.mint(randAddress, 1000);
         assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAndBurnLimit + 1000);
       }
@@ -51,9 +51,9 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @dev Should revert
     /// @param randAddress Random address
     function testLERC20MintNonAdmin(address randAddress) public {
-      cheats.startPrank(randAddress);
-      cheats.expectRevert("LERC20: Must be admin");
+      evm.startPrank(randAddress);
+      evm.expectRevert("LERC20: Must be admin");
       lerc20Mintable.mint(address(1), 1000);
-      cheats.stopPrank();
+      evm.stopPrank();
     }
 }
