@@ -56,4 +56,16 @@ contract LERC20MintableTests is LosslessTestEnvironment {
       lerc20Mintable.mint(address(1), 1000);
       evm.stopPrank();
     }
+
+    /// @notice Test minting to blacklisted address
+    /// @dev Should revert
+    /// @param randAddress Random address
+    /// @param mintAmt Random mint amount
+    function testLERC20MintBlacklisted(address randAddress, uint256 mintAmt) public {
+      if (randAddress != address(0)) {
+        generateReport(address(lerc20Token), randAddress, reporter);
+        evm.expectRevert("LSS: Cannot mint to blacklisted");
+        lerc20Mintable.mint(randAddress, mintAmt);
+      }
+    }
 }

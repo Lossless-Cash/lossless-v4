@@ -34,13 +34,20 @@ contract LosslessTestEnvironment is DSTest {
     LERC20BurnableMock public lerc20Burnable;
     LERC20MintableMock public lerc20Mintable;
     LERC20 public lssToken;
+    LERC20 public lerc20Token;
 
     Evm public evm = Evm(HEVM_ADDRESS);
 
     address public dex = address(99);
 
-    address[] whitelist = [address(this), dex];
-    address[] dexList = [dex]; 
+    address[] public whitelist = [address(this), dex];
+    address[] public dexList = [dex]; 
+    address[] public committeeMembers = [address(100), address(101), address(102), address(103), address(104)];
+    address public randTokenAdmin = address(105);
+
+    address public reporter = address(200);
+    address[] public stakers = [address(201), address(202), address(203), address(204), address(205)];
+    address maliciousActor = address(999);
 
     uint256 public totalSupply = 100000000000000000000;
     uint256 public mintAndBurnLimit = 99999999;
@@ -93,6 +100,16 @@ contract LosslessTestEnvironment is DSTest {
         "LSS",
         address(this),
         address(this),
+        1 days,
+        address(lssController)
+      );
+      
+      lerc20Token = new LERC20(
+        totalSupply,
+        "Random LERC20 Token",
+        "LERC",
+        randTokenAdmin,
+        randTokenAdmin,
         1 days,
         address(lssController)
       );
@@ -169,6 +186,10 @@ contract LosslessTestEnvironment is DSTest {
       assertEq(address(lssGovernance.losslessStaking()), address(lssStaking));
       assertEq(address(lssGovernance.losslessReporting()), address(lssReporting));
       assertEq(address(lssGovernance.losslessController()), address(lssController));
+
+      for (uint8 i = 0; i < committeeMembers.length; i++) {
+        assertTrue(lssGovernance.isCommitteeMember(committeeMembers[i]));
+      }
     }
 
     /// @notice Test deployed LssToken
@@ -178,6 +199,15 @@ contract LosslessTestEnvironment is DSTest {
       assertEq(lssToken.admin(), address(this));
       assertEq(lssToken.recoveryAdmin(), address(this));
       assertEq(lssToken.timelockPeriod(), 1 days);
+    }
+
+    /// @notice Test deployed Random LERC20 Token
+    function testLERC20TokenDeploy() public {
+      assertEq(lerc20Token.totalSupply(), totalSupply);
+      assertEq(lerc20Token.name(), "Random LERC20 Token");
+      assertEq(lerc20Token.admin(), randTokenAdmin);
+      assertEq(lerc20Token.recoveryAdmin(), randTokenAdmin);
+      assertEq(lerc20Token.timelockPeriod(), 1 days);
     }
 
     /// ----- Helpers ------
@@ -205,6 +235,7 @@ contract LosslessTestEnvironment is DSTest {
     /// @notice Sets up Lossless Governance
     function setUpGovernance() public {
       lssGovernance.initialize(lssReporting, lssController, lssStaking, walletDispute);
+      lssGovernance.addCommitteeMembers(committeeMembers);
     }
 
     /// @notice Sets up Lossless Controller
@@ -230,5 +261,46 @@ contract LosslessTestEnvironment is DSTest {
 
       lssController.setDexTransferThreshold(dexTransferTreshold);
       lssController.setSettlementTimeLock(settlementTimelock);
+    }
+
+    /// @notice Generate a report
+    function generateReport(address reportedToken, address reportedAdr, address reporter) public returns (uint256) {
+      lssToken.transfer(reporter, reportingAmount);
+      evm.warp(block.timestamp + settlementPeriod + 1);
+      evm.startPrank(reporter);
+      lssToken.approve(address(lssReporting), reportingAmount);
+      return lssReporting.report(ILERC20(reportedToken), reportedAdr);
+    }
+
+    /// @notice Solve Report Positively
+    function solveReportPositively(uint256 reportId) public {
+      lssGovernance.losslessVote(reportId, true);
+      
+      for (uint8 i = 0; i < committeeMembers.length; i++) {
+        evm.prank(committeeMembers[i]);
+        lssGovernance.committeeMemberVote(reportId, true);
+      }
+
+      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
+      evm.prank(reportedToken.admin());
+      lssGovernance.tokenOwnersVote(reportId, true);
+
+      lssGovernance.resolveReport(reportId);
+    }
+    
+    /// @notice Solve Report Negatively
+    function solveReportNegatively(uint256 reportId) public {
+      lssGovernance.losslessVote(reportId, false);
+      
+      for (uint8 i = 0; i < committeeMembers.length; i++) {
+        evm.prank(committeeMembers[i]);
+        lssGovernance.committeeMemberVote(reportId, false);
+      }
+
+      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
+      evm.prank(reportedToken.admin());
+      lssGovernance.tokenOwnersVote(reportId, false);
+
+      lssGovernance.resolveReport(reportId);
     }
 }

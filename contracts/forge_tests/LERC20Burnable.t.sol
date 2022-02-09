@@ -68,7 +68,6 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         lerc20Burnable.burn(burnAmount);
       }
     }
-
     
     /// @notice Test simple burnFrom
     /// @dev Should not revert
@@ -91,5 +90,31 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
       evm.expectRevert("ERC20: burn amount exceeds allowance");
       lerc20Burnable.burnFrom(address(1), 1000);
       evm.stopPrank();
+    }
+
+    /// @notice Test burning from blacklisted address
+    /// @dev Should revert
+    /// @param randAddress Random address
+    /// @param burnAmt Random burn amount
+    function testLERC20BurnBlacklisted(address randAddress, uint256 burnAmt) public {
+      if (randAddress != address(0)) {
+        generateReport(address(lerc20Token), randAddress, reporter);
+        evm.startPrank(randAddress);
+        evm.expectRevert("LSS: Cannot burn in blacklist");
+        lerc20Burnable.burn(burnAmt);
+        evm.stopPrank();
+      }
+    }
+
+        /// @notice Test burning from blacklisted address
+    /// @dev Should revert
+    /// @param randAddress Random address
+    /// @param burnAmt Random burn amount
+    function testLERC20BurnFromBlacklisted(address randAddress, uint256 burnAmt) public {
+      if (randAddress != address(0)) {
+        generateReport(address(lerc20Token), randAddress, reporter);
+        evm.expectRevert("LSS: Cannot burn in blacklist");
+        lerc20Burnable.burnFrom(randAddress, burnAmt);
+      }
     }
 }
