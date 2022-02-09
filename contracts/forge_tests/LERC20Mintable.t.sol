@@ -5,6 +5,12 @@ import "./utils/LosslessEnv.t.sol";
 
 contract LERC20MintableTests is LosslessTestEnvironment {
 
+    /// @notice Sets limit to zero
+    modifier mintLimitDeactivated() {
+      lssController.setTokenMintLimit(lerc20Mintable, 0);
+      _;
+    }
+
     /// @notice Test deployed Mintable LERC20 variables
     function testLERC20MintableDeploy() public {
       assertEq(lerc20Mintable.totalSupply(), totalSupply);
@@ -23,12 +29,29 @@ contract LERC20MintableTests is LosslessTestEnvironment {
       assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAmount);
     }
 
+    /// @notice Test simple mint without set limit
+    /// @dev Should not revert
+    /// @param mintAmount Random mint amount
+    function testLERC20MintNoLimit(uint8 mintAmount, address randAddress) public mintLimitDeactivated {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
+      lerc20Mintable.mint(randAddress, mintAmount);
+      assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAmount);
+    }
+
     /// @notice Test simple mint over limit
     /// @dev Should not revert
     /// @param mintAmount Random mint amount
     function testLERC20MintOverLimit(uint8 mintAmount, address randAddress) public {
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       evm.expectRevert("LSS: Token mint per period limit");
+      lerc20Mintable.mint(randAddress, mintAndBurnLimit + 1);
+    }
+
+    /// @notice Test simple mint over limit if limit is deactivated
+    /// @dev Should revert
+    /// @param mintAmount Random mint amount
+    function testLERC20MintOverLimitNoLimit(uint8 mintAmount, address randAddress) public mintLimitDeactivated {
+      uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       lerc20Mintable.mint(randAddress, mintAndBurnLimit + 1);
     }
 

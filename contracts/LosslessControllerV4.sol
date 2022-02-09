@@ -564,9 +564,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     }
 
-    // The following before hooks are in place as a placeholder for future products.
-    // Also to preserve legacy LERC20 compatibility
-    
+    /// @notice This hook verifies that a token is able to be minted within the set rules.
     function beforeMint(address _to, uint256 _amount) override external {
         require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
         require(!blacklist[msg.sender], "LSS: Blacklisted cannot mint");
@@ -575,19 +573,21 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
         TokenConfig storage config = tokenConfig[token]; 
 
-        if (config.mintedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
-            config.mintedOnPeriod = _amount;    
-            config.mintedTimestamp = block.timestamp;
-        } else {
-            config.mintedOnPeriod += _amount;
+        if (config.mintLimit != 0) {
+            if (config.mintedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+                config.mintedOnPeriod = _amount;    
+                config.mintedTimestamp = block.timestamp;
+            } else {
+                config.mintedOnPeriod += _amount;
+            }
+            
+            require(config.mintedOnPeriod <= config.mintLimit, "LSS: Token mint per period limit");
         }
-        
-        require(config.mintedOnPeriod <= config.mintLimit, "LSS: Token mint per period limit");
 
         emit NewMint(token, _to, _amount);
     }
 
-
+    /// @notice This hook verifies that a token is able to be burned within the set rules.
     function beforeBurn(address _account, uint256 _amount) override external {
         require(!blacklist[_account], "LSS: Cannot burn in blacklist");
 
@@ -595,17 +595,22 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
         TokenConfig storage config = tokenConfig[token]; 
         
-        if (config.burnedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
-            config.burnedOnPeriod = _amount;    
-            config.burnedTimestamp = block.timestamp;
-        } else {
-            config.burnedOnPeriod += _amount;
+        if (config.burnLimit != 0) {
+            if (config.burnedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+                config.burnedOnPeriod = _amount;    
+                config.burnedTimestamp = block.timestamp;
+            } else {
+                config.burnedOnPeriod += _amount;
+            }
         }
 
         require(config.burnedOnPeriod <= config.burnLimit, "LSS: Token burn per period limit");
 
         emit NewBurn(token, _account, _amount);
     }
+
+    // The following before hooks are in place as a placeholder for future products.
+    // Also to preserve legacy LERC20 compatibility
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
 
