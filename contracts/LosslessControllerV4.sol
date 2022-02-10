@@ -474,7 +474,12 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
                 
         (uint256 reporterReward, uint256 losslessReward, uint256 committeeReward, uint256 stakersReward) = losslessReporting.getRewards();
 
-        uint256 toLssStaking = totalAmount * stakersReward / HUNDRED;
+        uint256 toLssStaking;
+
+        if (losslessStaking.reportCoefficient(_reportId) != 0){
+            toLssStaking = totalAmount * stakersReward / HUNDRED;
+        }
+
         uint256 toLssReporting = totalAmount * reporterReward / HUNDRED;
         uint256 toLssGovernance = totalAmount - toLssStaking - toLssReporting;
 
@@ -482,7 +487,13 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         require(_token.transfer(address(losslessReporting), toLssReporting), "LSS: Reporting retrieval failed");
         require(_token.transfer(address(losslessGovernance), toLssGovernance), "LSS: Governance retrieval failed");
 
-        return totalAmount - toLssStaking - toLssReporting - (totalAmount * (committeeReward + losslessReward) / HUNDRED);
+        uint256 committeeRewardFunds;
+
+        if (losslessGovernance.getIsVoted(_reportId, losslessGovernance.COMMITEE_INDEX())) {
+            committeeRewardFunds = (totalAmount * committeeReward / HUNDRED);
+        }
+        
+        return totalAmount - toLssStaking - toLssReporting - committeeRewardFunds - (totalAmount * losslessReward / HUNDRED);
     }
 
 

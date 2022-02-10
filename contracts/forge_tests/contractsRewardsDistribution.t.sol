@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./utils/LosslessEnv.t.sol";
 
-contract RewardsTests is LosslessTestEnvironment {
+contract ContractsRewardsDistributionTests is LosslessTestEnvironment {
 
   /// @notice Test Committee members claiming their rewards when all participating
   /// @dev Should not revert and update balances correctly
@@ -39,7 +39,6 @@ contract RewardsTests is LosslessTestEnvironment {
     }
 
     uint256 reportId = generateReport(address(lerc20Token), maliciousActor, reporter);
-    
     solveReport(reportId, participatingMembers, true, true, true);
 
     for (uint i = 0; i < totalMembers; i++) {
@@ -54,5 +53,51 @@ contract RewardsTests is LosslessTestEnvironment {
       }
       evm.stopPrank();
     }
+  }
+
+  /// @notice Test Rewards distribution to Lossless Contracts whent everyone participates
+  /// @dev Should not revert and transfer correctly
+  function testRewardDistributionFull() public {
+    uint256 participatingMembers = 3;
+    uint256 participatingStakers = 3;
+    uint256 expectedToRetrieve = reportedAmount - (reportedAmount * (committeeReward + stakersReward + reporterReward + losslessReward) / 1e2);
+
+    uint256 reportId = generateReport(address(lerc20Token), maliciousActor, reporter);
+    stakeOnReport(reportId, participatingStakers, 30 minutes);
+    solveReport(reportId, participatingMembers, true, true, true);
+
+    (,,uint256 fundsToRetrieve,,,,,,,,) = lssGovernance.proposedWalletOnReport(reportId);
+
+    assertEq(fundsToRetrieve, expectedToRetrieve);
+  }
+
+  /// @notice Test Rewards distribution to Lossless Contracts whent nobody stakes
+  /// @dev Should not revert and transfer correctly
+  function testRewardDistributionNoStakes() public {
+    uint256 participatingMembers = 3;
+    uint256 expectedToRetrieve = reportedAmount - (reportedAmount * (reporterReward + committeeReward + losslessReward) / 1e2);
+
+    uint256 reportId = generateReport(address(lerc20Token), maliciousActor, reporter);
+    
+    solveReport(reportId, participatingMembers, true, true, true);
+
+    (,,uint256 fundsToRetrieve,,,,,,,,) = lssGovernance.proposedWalletOnReport(reportId);
+
+    assertEq(fundsToRetrieve, expectedToRetrieve);
+  }
+
+  /// @notice Test Rewards distribution to Lossless Contracts whent nobody stakes and committee does not participate
+  /// @dev Should not revert and transfer correctly
+  function testRewardDistributionNoStakesNoCommittee() public {
+    uint256 participatingMembers = 0;
+    uint256 expectedToRetrieve = reportedAmount - (reportedAmount * (reporterReward + losslessReward) / 1e2);
+
+    uint256 reportId = generateReport(address(lerc20Token), maliciousActor, reporter);
+    
+    solveReport(reportId, participatingMembers, true, true, true);
+
+    (,,uint256 fundsToRetrieve,,,,,,,,) = lssGovernance.proposedWalletOnReport(reportId);
+
+    assertEq(fundsToRetrieve, expectedToRetrieve);
   }
 }

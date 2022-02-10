@@ -264,4 +264,20 @@ contract LosslessTestEnvironment is DSTest {
 
       lssGovernance.resolveReport(reportId);
     }
+
+    /// @notice Stake on a report
+    function stakeOnReport(uint256 reportId, uint256 amountOfStakers, uint256 skipTime) public {
+      require(amountOfStakers <= stakers.length, "TEST: Not enough stakers");
+      
+      for (uint8 i = 0; i < amountOfStakers; i++) {
+        evm.prank(address(this));
+        lssToken.transfer(stakers[i], stakingAmount);
+        evm.startPrank(stakers[i]);
+        lssToken.approve(address(lssStaking), stakingAmount);
+        evm.warp(settlementPeriod + 1);
+        lssStaking.stake(reportId);
+        evm.warp(skipTime);
+        evm.stopPrank();
+      }
+    }
 }

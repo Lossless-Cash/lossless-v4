@@ -38,7 +38,7 @@ contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, Paus
 
     mapping(address => Stake) private stakes;
 
-    mapping(uint256 => uint256) public reportCoefficient;
+    mapping(uint256 => uint256) public override reportCoefficient;
 
     mapping(address => PerReportAmount) stakedOnReport;
 
