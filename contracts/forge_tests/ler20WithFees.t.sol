@@ -6,7 +6,7 @@ import "./utils/LosslessEnv.t.sol";
 contract LERC20WithFeesTests is LosslessTestEnvironment {
 
     /// @notice Test deployed Burnable LERC20 variables
-    function testLERC20BurnableDeploy() public {
+    function testLERC20withFeesDeploy() public {
       assertEq(lerc20WithFees.totalSupply(), totalSupply);
       assertEq(lerc20WithFees.name(), "LERC20 With fees");
       assertEq(lerc20WithFees.admin(), address(this));
