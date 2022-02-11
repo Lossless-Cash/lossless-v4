@@ -13,6 +13,7 @@ import "../../utils/hack-mitigation-protocol/LosslessStaking.sol";
 
 import "../../utils/mocks/LERC20BurnableMock.sol";
 import "../../utils/mocks/LERC20MintableMock.sol";
+import "../../utils/mocks/LERC20WithFees.sol";
 import "../../LosslessControllerV4.sol";
 
 import "./IEvm.sol";
@@ -33,6 +34,7 @@ contract LosslessTestEnvironment is DSTest {
 
     LERC20BurnableMock public lerc20Burnable;
     LERC20MintableMock public lerc20Mintable;
+    LERC20WithFees public lerc20WithFees;
     LERC20 public lssToken;
     LERC20 public lerc20Token;
 
@@ -133,6 +135,16 @@ contract LosslessTestEnvironment is DSTest {
         totalSupply,
         "LERC20 Mintable",
         "lMINT",
+        address(this),
+        address(this),
+        1 days,
+        address(lssController)
+      );
+
+      lerc20WithFees = new LERC20WithFees(
+        totalSupply,
+        "LERC20 With fees",
+        "lFEES",
         address(this),
         address(this),
         1 days,
