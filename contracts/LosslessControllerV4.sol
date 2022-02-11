@@ -77,15 +77,29 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         uint256 proposedTokenLockTimeframe;
         uint256 changeSettlementTimelock;
         uint256 emergencyMode;
-        uint256 mintLimit;
-        uint256 burnLimit;
-        uint256 mintedOnPeriod;
-        uint256 burnedOnPeriod;
-        uint256 mintedTimestamp;
-        uint256 burnedTimestamp;
     }
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
+
+    // --- V4 VARIABLES ---
+
+    struct MintableTokenConfig {
+        uint256 mintPeriod;
+        uint256 mintLimit;
+        uint256 mintedOnPeriod;
+        uint256 mintedTimestamp;
+    }
+
+    mapping(ILERC20 => MintableTokenConfig) mintableTokenConfig;
+
+    struct BurnableTokenConfig {
+        uint256 burnPeriod;
+        uint256 burnLimit;
+        uint256 burnedOnPeriod;
+        uint256 burnedTimestamp;
+    }
+
+    mapping(ILERC20 => BurnableTokenConfig) burnableTokenConfig;
 
     // --- MODIFIERS ---
 
@@ -340,9 +354,20 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @param _limit Limit of tokens that can be minted
     function setTokenMintLimit(ILERC20 _token, uint256 _limit) override external {
         require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
-        require(_limit != tokenConfig[_token].mintLimit, "LSS: Cannot set same value");
-        tokenConfig[_token].mintLimit = _limit;
+        require(_limit != mintableTokenConfig[_token].mintLimit, "LSS: Cannot set same value");
+        mintableTokenConfig[_token].mintLimit = _limit;
         emit NewMintLimit(_token, _limit);
+    }
+
+    
+    /// @notice This function sets the mint  period
+    /// @param _token Token on which the mint period will be set
+    /// @param _period Period duration
+    function setTokenMintPeriod(ILERC20 _token, uint256 _period) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_period != mintableTokenConfig[_token].mintPeriod, "LSS: Cannot set same value");
+        mintableTokenConfig[_token].mintPeriod = _period;
+        emit NewMintPeriod(_token, _period);
     }
     
     /// @notice This function sets the burn limit per period
@@ -350,9 +375,19 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @param _limit Limit of tokens that can be burned
     function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {
         require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
-        require(_limit != tokenConfig[_token].burnLimit, "LSS: Cannot set same value");
-        tokenConfig[_token].burnLimit = _limit;
+        require(_limit != burnableTokenConfig[_token].burnLimit, "LSS: Cannot set same value");
+        burnableTokenConfig[_token].burnLimit = _limit;
         emit NewBurnLimit(_token, _limit);
+    }
+    
+    /// @notice This function sets the burn period
+    /// @param _token Token on which the burn period will be set
+    /// @param _period Period duration
+    function setTokenBurnPeriod(ILERC20 _token, uint256 _period) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_period != burnableTokenConfig[_token].burnPeriod, "LSS: Cannot set same value");
+        burnableTokenConfig[_token].burnPeriod = _period;
+        emit NewBurnPeriod(_token, _period);
     }
 
     // --- GUARD ---
@@ -576,16 +611,16 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     }
 
     /// @notice This hook verifies that a token is able to be minted within the set rules.
-    function beforeMint(address _to, uint256 _amount) override external {
+    function beforeMint(address msgSender, address _to, uint256 _amount) override external {
         require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
-        require(!blacklist[msg.sender], "LSS: Blacklisted cannot mint");
+        require(!blacklist[msgSender], "LSS: Blacklisted cannot mint");
 
         ILERC20 token = ILERC20(msg.sender);
 
-        TokenConfig storage config = tokenConfig[token]; 
+        MintableTokenConfig storage config = mintableTokenConfig[token]; 
 
         if (config.mintLimit != 0) {
-            if (config.mintedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+            if (config.mintedTimestamp + config.mintPeriod <= block.timestamp) {
                 config.mintedOnPeriod = _amount;    
                 config.mintedTimestamp = block.timestamp;
             } else {
@@ -604,10 +639,10 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
         ILERC20 token = ILERC20(msg.sender);
 
-        TokenConfig storage config = tokenConfig[token]; 
+        BurnableTokenConfig storage config = burnableTokenConfig[token]; 
         
         if (config.burnLimit != 0) {
-            if (config.burnedTimestamp + config.tokenLockTimeframe <= block.timestamp) {
+            if (config.burnedTimestamp + config.burnPeriod <= block.timestamp) {
                 config.burnedOnPeriod = _amount;    
                 config.burnedTimestamp = block.timestamp;
             } else {

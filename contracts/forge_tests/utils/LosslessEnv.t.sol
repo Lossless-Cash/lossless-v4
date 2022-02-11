@@ -53,6 +53,9 @@ contract LosslessTestEnvironment is DSTest {
     uint256 public mintAndBurnLimit = 99999999;
     uint256 public settlementPeriod = 600;
 
+    uint256 public mintPeriod = 600;
+    uint256 public burnPeriod = 600;
+
     uint256 public stakingAmount = 1000;
     uint256 public reportingAmount = 1000;
 
@@ -179,9 +182,11 @@ contract LosslessTestEnvironment is DSTest {
 
     /// @notice Sets up Lossless Controller
     function setUpController() public {
+      lssController.setTokenMintPeriod(lerc20Mintable, mintPeriod);
       lssController.setTokenMintLimit(lerc20Mintable, mintAndBurnLimit);
       lssController.proposeNewSettlementPeriod(lerc20Mintable, settlementPeriod);
 
+      lssController.setTokenBurnPeriod(lerc20Burnable, burnPeriod);
       lssController.setTokenBurnLimit(lerc20Burnable, mintAndBurnLimit);
       lssController.proposeNewSettlementPeriod(lerc20Burnable, settlementPeriod);
 

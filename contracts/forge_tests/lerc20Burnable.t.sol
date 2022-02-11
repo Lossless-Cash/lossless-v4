@@ -28,7 +28,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         assertTrue(true);
       } else {
         lerc20Burnable.transfer(randAddress, burnAmount + 10000);
-        evm.warp(block.timestamp + settlementPeriod + 1);
+        evm.warp(block.timestamp + burnPeriod + 1);
         uint256 balanceBefore = lerc20Burnable.balanceOf(randAddress);
         evm.startPrank(randAddress);
         lerc20Burnable.burn(burnAmount);
@@ -45,7 +45,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         assertTrue(true);
       } else {
         lerc20Burnable.transfer(randAddress, burnAmount + 10000);
-        evm.warp(block.timestamp + settlementPeriod + 1);
+        evm.warp(block.timestamp + burnPeriod + 1);
         uint256 balanceBefore = lerc20Burnable.balanceOf(randAddress);
         evm.startPrank(randAddress);
         lerc20Burnable.burn(burnAmount);
@@ -62,7 +62,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
 
       lerc20Burnable.transfer(randAddress, mintAndBurnLimit + 1);
     
-      evm.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + burnPeriod + 1);
 
       evm.prank(randAddress);
       evm.expectRevert("LSS: Token burn per period limit");
@@ -76,7 +76,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
 
       lerc20Burnable.transfer(randAddress, mintAndBurnLimit + 1);
     
-      evm.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + burnPeriod + 1);
 
       evm.prank(randAddress);
       lerc20Burnable.burn(mintAndBurnLimit + 1);
@@ -93,7 +93,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         lerc20Burnable.transfer(burners[i], burnAmount);
       }
     
-      evm.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + burnPeriod + 1);
 
       for (uint i = 0; i < burners.length; i++) {
         evm.prank(burners[i]);
@@ -105,9 +105,9 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
       }
     }
 
-    /// @notice Test burn over limit with mutliple burning after deactivating 
+    /// @notice Test burn without limits set 
     /// @dev Should revert
-    function testLERC20BurnOverLimitMultiNoLimit() public burnLimitDeactivated {
+    function testLERC20BurnOverMultiNoLimit() public burnLimitDeactivated {
       address[6] memory burners = [address(1), address(2), address(3), address(4), address(5), address(1)];
       uint256 burnAmount = mintAndBurnLimit + 1 / burners.length;
       uint256 cummulativeBurn = 0;
@@ -116,7 +116,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
         lerc20Burnable.transfer(burners[i], burnAmount);
       }
     
-      evm.warp(block.timestamp + settlementPeriod + 1);
+      evm.warp(block.timestamp + burnPeriod + 1);
 
       for (uint i = 0; i < burners.length; i++) {
         evm.prank(burners[i]);

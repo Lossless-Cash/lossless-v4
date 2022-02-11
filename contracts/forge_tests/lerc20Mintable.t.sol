@@ -64,7 +64,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
         lerc20Mintable.mint(randAddress, mintAndBurnLimit);
         evm.expectRevert("LSS: Token mint per period limit");
         lerc20Mintable.mint(randAddress, 3);
-        evm.warp(block.timestamp + settlementPeriod + 1);
+        evm.warp(block.timestamp + mintPeriod + 1);
         lerc20Mintable.mint(randAddress, 1000);
         assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAndBurnLimit + 1000);
       }

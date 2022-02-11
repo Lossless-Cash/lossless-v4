@@ -536,7 +536,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
     // The following before hooks are in place as a placeholder for future products.
     // Also to preserve legacy LERC20 compatibility
     
-    function beforeMint(address _to, uint256 _amount) override external {}
+    function beforeMint(address msgSender, address _to, uint256 _amount) override external {}
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
 
@@ -567,4 +567,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {}
     function setTokenMintLimit(ILERC20 _token, uint256 limit) override external {}
+
+    function setTokenBurnPeriod(ILERC20 _token, uint256 _limit) override external {}
+    function setTokenMintPeriod(ILERC20 _token, uint256 limit) override external {}
 }

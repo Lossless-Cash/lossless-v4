@@ -39,7 +39,9 @@ interface ILssController {
     function setReportingContractAddress(ILssReporting _adr) external; 
     function setGovernanceContractAddress(ILssGovernance _adr) external;
     function setTokenMintLimit(ILERC20 _token, uint256 limit) external;
+    function setTokenMintPeriod(ILERC20 _token, uint256 _period) external;
     function setTokenBurnLimit(ILERC20 _token, uint256 _limit) external;
+    function setTokenBurnPeriod(ILERC20 _token, uint256 _period) external;
     function proposeNewSettlementPeriod(ILERC20 _token, uint256 _seconds) external;
     function executeNewSettlementPeriod(ILERC20 _token) external;
     function activateEmergency(ILERC20 _token) external;
@@ -51,7 +53,7 @@ interface ILssController {
     function beforeApprove(address _sender, address _spender, uint256 _amount) external;
     function beforeIncreaseAllowance(address _msgSender, address _spender, uint256 _addedValue) external;
     function beforeDecreaseAllowance(address _msgSender, address _spender, uint256 _subtractedValue) external;
-    function beforeMint(address _to, uint256 _amount) external;
+    function beforeMint(address msgSender, address _to, uint256 _amount) external;
     function beforeBurn(address _account, uint256 _amount) external;
     function afterTransfer(address _sender, address _recipient, uint256 _amount) external;
     function setProtectedAddress(ILERC20 _token, address _protectedAddress, ProtectionStrategy _strategy) external;
@@ -79,6 +81,8 @@ interface ILssController {
     event EmergencyDeactivation(ILERC20 indexed _token);
     event NewMint(ILERC20 indexed token, address indexed account, uint256 indexed amount);
     event NewMintLimit(ILERC20 indexed token, uint256 indexed limit);
+    event NewMintPeriod(ILERC20 indexed token, uint256 indexed period);
     event NewBurn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
     event NewBurnLimit(ILERC20 indexed token, uint256 indexed limit);
+    event NewBurnPeriod(ILERC20 indexed token, uint256 indexed period);
 }
