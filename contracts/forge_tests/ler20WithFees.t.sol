@@ -37,4 +37,27 @@ contract LERC20WithFeesTests is LosslessTestEnvironment {
         assertEq(lerc20WithFees.feesPool(), feeToTake);
       }
     } 
+
+    /// @notice Test transfer with fees
+    /// @dev Should not revert 
+    function testLERC20WithFeesTransferFrom(uint8 randAmount, address randAddress, address anotherRandAddress) public {
+      if (randAddress != address(0) && anotherRandAddress != address(0)) {
+        evm.startPrank(address(this));
+        lerc20WithFees.addExcludedAddress(address(this));
+        lerc20WithFees.transfer(randAddress, randAmount);
+        evm.stopPrank();
+
+        assertEq(lerc20WithFees.balanceOf(address(lerc20WithFees)), 0);
+        assertEq(lerc20WithFees.balanceOf(randAddress), randAmount);
+        assertEq(lerc20WithFees.feesPool(), 0);
+
+        lerc20WithFees.transferFrom(randAddress, anotherRandAddress, randAmount);
+
+        uint256 feeToTake = randAmount * lerc20WithFees.feeAmount() / 1e2;
+
+        assertEq(lerc20WithFees.balanceOf(address(lerc20WithFees)), feeToTake);
+        assertEq(lerc20WithFees.balanceOf(anotherRandAddress), randAmount - feeToTake);
+        assertEq(lerc20WithFees.feesPool(), feeToTake);
+      }
+    } 
 }
