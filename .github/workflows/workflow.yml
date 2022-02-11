@@ -1,18 +1,20 @@
 name: CI/CD Pipeline
-on:
-    push:
-        branches: [master]
+
+on: [push]
 
 jobs:
-  test:
+  check:
+    name: Foundry project
     runs-on: ubuntu-latest
-
+    
     strategy:
       matrix:
         node-version: [14.x]
-
+        
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -34,6 +36,11 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-      
-      - name: Test
-        run: npm test
+
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run tests
+        run: forge test -vvv

@@ -5,11 +5,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "../Interfaces/ILosslessERC20.sol";
-import "../Interfaces/ILosslessController.sol";
-import "../Interfaces/ILosslessGovernance.sol";
-import "../Interfaces/ILosslessReporting.sol";
-import "../Interfaces/ILosslessStaking.sol";
+import "../../Interfaces/ILosslessERC20.sol";
+import "../../Interfaces/ILosslessController.sol";
+import "../../Interfaces/ILosslessGovernance.sol";
+import "../../Interfaces/ILosslessReporting.sol";
+import "../../Interfaces/ILosslessStaking.sol";
 
 /// @title Lossless Staking Contract
 /// @notice The Staking contract is in charge of handling the staking done on reports
@@ -38,7 +38,7 @@ contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, Paus
 
     mapping(address => Stake) private stakes;
 
-    mapping(uint256 => uint256) public reportCoefficient;
+    mapping(uint256 => uint256) public override reportCoefficient;
 
     mapping(address => PerReportAmount) stakedOnReport;
 

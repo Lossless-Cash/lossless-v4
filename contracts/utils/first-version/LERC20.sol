@@ -1,9 +1,10 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./Context.sol";
-import "../Interfaces/ILosslessERC20.sol";
-import "../Interfaces/ILosslessController.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+
+import "../../Interfaces/ILosslessERC20.sol";
+import "../../Interfaces/ILosslessController.sol";
 
 contract LERC20 is Context, ILERC20 {
     mapping (address => uint256) private _balances;
@@ -221,6 +222,19 @@ contract LERC20 is Context, ILERC20 {
             _balances[account] += amount;
         }
         emit Transfer(address(0), account, amount);
+    }
+
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0), "ERC20: burn from the zero address");
+
+        uint256 accountBalance = _balances[account];
+        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        unchecked {
+            _balances[account] = accountBalance - amount;
+        }
+        _totalSupply -= amount;
+
+        emit Transfer(account, address(0), amount);
     }
 
     function _approve(address owner, address spender, uint256 amount) internal virtual {

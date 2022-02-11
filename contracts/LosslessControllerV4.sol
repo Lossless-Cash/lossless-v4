@@ -5,15 +5,17 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../Interfaces/ILosslessERC20.sol";
-import "../Interfaces/ILosslessGovernance.sol";
-import "../Interfaces/ILosslessStaking.sol";
-import "../Interfaces/ILosslessReporting.sol";
-import "../Interfaces/IProtectionStrategy.sol";
+import "./Interfaces/ILosslessERC20.sol";
+import "./Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/ILosslessStaking.sol";
+import "./Interfaces/ILosslessReporting.sol";
+import "./Interfaces/IProtectionStrategy.sol";
+
+import "hardhat/console.sol";
 
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
-contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
+contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
     
     // IMPORTANT!: For future reference, when adding new variables for following versions of the controller. 
     // All the previous ones should be kept in place and not change locations, types or names.
@@ -79,6 +81,26 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
 
+    // --- V4 VARIABLES ---
+
+    struct MintableTokenConfig {
+        uint256 mintPeriod;
+        uint256 mintLimit;
+        uint256 mintedOnPeriod;
+        uint256 mintedTimestamp;
+    }
+
+    mapping(ILERC20 => MintableTokenConfig) mintableTokenConfig;
+
+    struct BurnableTokenConfig {
+        uint256 burnPeriod;
+        uint256 burnLimit;
+        uint256 burnedOnPeriod;
+        uint256 burnedTimestamp;
+    }
+
+    mapping(ILERC20 => BurnableTokenConfig) burnableTokenConfig;
+
     // --- MODIFIERS ---
 
     /// @notice Avoids execution from other than the Recovery Admin
@@ -121,7 +143,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     /// @notice This function will return the contract version 
     function getVersion() external pure returns (uint256) {
-        return 3;
+        return 4;
     }
 
         // --- V2 VIEWS ---
@@ -324,19 +346,63 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
         emit EmergencyDeactivation(_token);
     }
 
-   // --- GUARD ---
 
-    // @notice Set a guardian contract.
-    // @dev Guardian contract must be trusted as it has some access rights and can modify controller's state.
+    // --- V4 Setters ---
+    
+    /// @notice This function sets the mint limit per period
+    /// @param _token Token on which the mint limit will be set
+    /// @param _limit Limit of tokens that can be minted
+    function setTokenMintLimit(ILERC20 _token, uint256 _limit) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_limit != mintableTokenConfig[_token].mintLimit, "LSS: Cannot set same value");
+        mintableTokenConfig[_token].mintLimit = _limit;
+        emit NewMintLimit(_token, _limit);
+    }
+
+    
+    /// @notice This function sets the mint  period
+    /// @param _token Token on which the mint period will be set
+    /// @param _period Period duration
+    function setTokenMintPeriod(ILERC20 _token, uint256 _period) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_period != mintableTokenConfig[_token].mintPeriod, "LSS: Cannot set same value");
+        mintableTokenConfig[_token].mintPeriod = _period;
+        emit NewMintPeriod(_token, _period);
+    }
+    
+    /// @notice This function sets the burn limit per period
+    /// @param _token Token on which the burn limit will be set
+    /// @param _limit Limit of tokens that can be burned
+    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_limit != burnableTokenConfig[_token].burnLimit, "LSS: Cannot set same value");
+        burnableTokenConfig[_token].burnLimit = _limit;
+        emit NewBurnLimit(_token, _limit);
+    }
+    
+    /// @notice This function sets the burn period
+    /// @param _token Token on which the burn period will be set
+    /// @param _period Period duration
+    function setTokenBurnPeriod(ILERC20 _token, uint256 _period) override external {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        require(_period != burnableTokenConfig[_token].burnPeriod, "LSS: Cannot set same value");
+        burnableTokenConfig[_token].burnPeriod = _period;
+        emit NewBurnPeriod(_token, _period);
+    }
+
+    // --- GUARD ---
+
+    /// @notice Set a guardian contract.
+    /// @dev Guardian contract must be trusted as it has some access rights and can modify controller's state.
     function setGuardian(address _newGuardian) override external onlyLosslessAdmin whenNotPaused {
         require(_newGuardian != address(0), "LSS: Cannot be zero address");
         emit GuardianSet(guardian, _newGuardian);
         guardian = _newGuardian;
     }
 
-    // @notice Sets protection for an address with the choosen strategy.
-    // @dev Strategies are verified in the guardian contract.
-    // @dev This call is initiated from a strategy, but guardian proxies it.
+    /// @notice Sets protection for an address with the choosen strategy.
+    /// @dev Strategies are verified in the guardian contract.
+    /// @dev This call is initiated from a strategy, but guardian proxies it.
     function setProtectedAddress(ILERC20 _token, address _protectedAddress, ProtectionStrategy _strategy) override external onlyGuardian whenNotPaused {
         Protection storage protection = tokenProtections[_token].protections[_protectedAddress];
         protection.isProtected = true;
@@ -344,9 +410,9 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
         emit NewProtectedAddress(_token, _protectedAddress, address(_strategy));
     }
 
-    // @notice Remove the protection from the address.
-    // @dev Strategies are verified in the guardian contract.
-    // @dev This call is initiated from a strategy, but guardian proxies it.
+    /// @notice Remove the protection from the address.
+    /// @dev Strategies are verified in the guardian contract.
+    /// @dev This call is initiated from a strategy, but guardian proxies it.
     function removeProtectedAddress(ILERC20 _token, address _protectedAddress) override external onlyGuardian whenNotPaused {
         require(isAddressProtected(_token, _protectedAddress), "LSS: Address not protected");
         delete tokenProtections[_token].protections[_protectedAddress];
@@ -443,7 +509,12 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
                 
         (uint256 reporterReward, uint256 losslessReward, uint256 committeeReward, uint256 stakersReward) = losslessReporting.getRewards();
 
-        uint256 toLssStaking = totalAmount * stakersReward / HUNDRED;
+        uint256 toLssStaking;
+
+        if (losslessStaking.reportCoefficient(_reportId) != 0){
+            toLssStaking = totalAmount * stakersReward / HUNDRED;
+        }
+
         uint256 toLssReporting = totalAmount * reporterReward / HUNDRED;
         uint256 toLssGovernance = totalAmount - toLssStaking - toLssReporting;
 
@@ -451,7 +522,13 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
         require(_token.transfer(address(losslessReporting), toLssReporting), "LSS: Reporting retrieval failed");
         require(_token.transfer(address(losslessGovernance), toLssGovernance), "LSS: Governance retrieval failed");
 
-        return totalAmount - toLssStaking - toLssReporting - (totalAmount * (committeeReward + losslessReward) / HUNDRED);
+        uint256 committeeRewardFunds;
+
+        if (losslessGovernance.getIsVoted(_reportId, losslessGovernance.COMMITEE_INDEX())) {
+            committeeRewardFunds = (totalAmount * committeeReward / HUNDRED);
+        }
+        
+        return totalAmount - toLssStaking - toLssReporting - committeeRewardFunds - (totalAmount * losslessReward / HUNDRED);
     }
 
 
@@ -533,14 +610,57 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     }
 
+    /// @notice This hook verifies that a token is able to be minted within the set rules.
+    function beforeMint(address msgSender, address _to, uint256 _amount) override external {
+        require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
+        require(!blacklist[msgSender], "LSS: Blacklisted cannot mint");
+
+        ILERC20 token = ILERC20(msg.sender);
+
+        MintableTokenConfig storage config = mintableTokenConfig[token]; 
+
+        if (config.mintLimit != 0) {
+            if (config.mintedTimestamp + config.mintPeriod <= block.timestamp) {
+                config.mintedOnPeriod = _amount;    
+                config.mintedTimestamp = block.timestamp;
+            } else {
+                config.mintedOnPeriod += _amount;
+            }
+            
+            require(config.mintedOnPeriod <= config.mintLimit, "LSS: Token mint per period limit");
+        }
+
+        emit NewMint(token, _to, _amount);
+    }
+
+    /// @notice This hook verifies that a token is able to be burned within the set rules.
+    function beforeBurn(address _account, uint256 _amount) override external {
+        require(!blacklist[_account], "LSS: Cannot burn in blacklist");
+
+        ILERC20 token = ILERC20(msg.sender);
+
+        BurnableTokenConfig storage config = burnableTokenConfig[token]; 
+        
+        if (config.burnLimit != 0) {
+            if (config.burnedTimestamp + config.burnPeriod <= block.timestamp) {
+                config.burnedOnPeriod = _amount;    
+                config.burnedTimestamp = block.timestamp;
+            } else {
+                config.burnedOnPeriod += _amount;
+            }
+        }
+
+        require(config.burnedOnPeriod <= config.burnLimit, "LSS: Token burn per period limit");
+
+        emit NewBurn(token, _account, _amount);
+    }
+
     // The following before hooks are in place as a placeholder for future products.
     // Also to preserve legacy LERC20 compatibility
-    
+
     function beforeMint(address _to, uint256 _amount) override external {}
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
-
-    function beforeBurn(address _account, uint256 _amount) override external {}
 
     function beforeIncreaseAllowance(address _msgSender, address _spender, uint256 _addedValue) override external {}
 
@@ -557,7 +677,7 @@ contract LosslessControllerV3 is ILssController, Initializable, ContextUpgradeab
 
     function afterBurn(address _account, uint256 _amount) external {}
 
-    function afterTransfer(address _sender, address _recipient, uint256 _amount) external {}
+    function afterTransfer(address _sender, address _recipient, uint256 _amount) override external {}
 
     function afterTransferFrom(address _msgSender, address _sender, address _recipient, uint256 _amount) external {}
 
