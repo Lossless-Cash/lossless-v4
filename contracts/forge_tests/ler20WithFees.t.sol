@@ -41,11 +41,12 @@ contract LERC20WithFeesTests is LosslessTestEnvironment {
     /// @notice Test transfer with fees
     /// @dev Should not revert 
     function testLERC20WithFeesTransferFrom(uint8 randAmount, address randAddress, address anotherRandAddress) public {
-      if (randAddress != address(0) && anotherRandAddress != address(0)) {
-        evm.startPrank(address(this));
+      if ((randAddress != address(0) && anotherRandAddress != address(0)) && (randAddress != anotherRandAddress)) {
+        evm.prank(randAddress);
+        lerc20WithFees.approve(address(this), randAmount);
+
         lerc20WithFees.addExcludedAddress(address(this));
         lerc20WithFees.transfer(randAddress, randAmount);
-        evm.stopPrank();
 
         assertEq(lerc20WithFees.balanceOf(address(lerc20WithFees)), 0);
         assertEq(lerc20WithFees.balanceOf(randAddress), randAmount);
