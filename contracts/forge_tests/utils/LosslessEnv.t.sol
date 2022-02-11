@@ -68,6 +68,8 @@ contract LosslessTestEnvironment is DSTest {
     uint256 public dexTransferTreshold = 200;
     uint256 public settlementTimelock = 60;
 
+    uint256 public reportedAmount = 100000;
+
     function setUp() public {
 
       lssControllerV1 = new LosslessControllerV1();
@@ -147,69 +149,6 @@ contract LosslessTestEnvironment is DSTest {
       setUpController();
     }
 
-    /// @notice Test deployed Controller variables
-    function testControllerDeploy() public {
-      assertEq(lssController.getVersion() , 4);
-      assertEq(lssController.admin(), address(this));
-      assertEq(lssController.pauseAdmin(), address(this));
-      assertEq(lssController.recoveryAdmin(), address(this));
-    }
-
-    /// @notice Test deployed Reporting Config
-    function testReportingDeploy() public {
-      assertEq(lssReporting.reportLifetime(), reportLifetime);
-      assertEq(lssReporting.reportingAmount(), reportingAmount);
-      assertEq(address(lssReporting.losslessController()), address(lssController));
-      assertEq(address(lssReporting.stakingToken()), address(lssToken));
-      assertEq(address(lssReporting.losslessGovernance()), address(lssGovernance));
-
-      (uint256 configReporterReward, uint256 configLosslessReward, uint256 configCommitteeReward, uint256 configStakerReward) = lssReporting.getRewards();
-
-      assertEq(configReporterReward, reporterReward);
-      assertEq(configLosslessReward, losslessReward);
-      assertEq(configCommitteeReward, committeeReward);
-      assertEq(configStakerReward, stakersReward);
-    }
-
-    /// @notice Test deployed Staking Contract
-    function testStakingDeploy() public {
-      assertEq(lssStaking.stakingAmount(), stakingAmount);
-      assertEq(address(lssStaking.stakingToken()), address(lssToken));
-      assertEq(address(lssStaking.losslessReporting()), address(lssReporting));
-      assertEq(address(lssStaking.losslessGovernance()), address(lssGovernance));
-      assertEq(address(lssStaking.losslessController()), address(lssController));
-    }
-
-    /// @notice Test deployed Governance Contract
-    function testGovernanceDeploy() public {
-      assertEq(lssGovernance.walletDisputePeriod(), walletDispute);
-      assertEq(address(lssGovernance.losslessStaking()), address(lssStaking));
-      assertEq(address(lssGovernance.losslessReporting()), address(lssReporting));
-      assertEq(address(lssGovernance.losslessController()), address(lssController));
-
-      for (uint8 i = 0; i < committeeMembers.length; i++) {
-        assertTrue(lssGovernance.isCommitteeMember(committeeMembers[i]));
-      }
-    }
-
-    /// @notice Test deployed LssToken
-    function testLssTokenDeploy() public {
-      assertEq(lssToken.totalSupply(), totalSupply);
-      assertEq(lssToken.name(), "Lossless Token");
-      assertEq(lssToken.admin(), address(this));
-      assertEq(lssToken.recoveryAdmin(), address(this));
-      assertEq(lssToken.timelockPeriod(), 1 days);
-    }
-
-    /// @notice Test deployed Random LERC20 Token
-    function testLERC20TokenDeploy() public {
-      assertEq(lerc20Token.totalSupply(), totalSupply);
-      assertEq(lerc20Token.name(), "Random LERC20 Token");
-      assertEq(lerc20Token.admin(), randTokenAdmin);
-      assertEq(lerc20Token.recoveryAdmin(), randTokenAdmin);
-      assertEq(lerc20Token.timelockPeriod(), 1 days);
-    }
-
     /// ----- Helpers ------
 
     /// @notice Sets up Lossless Reporting
@@ -266,6 +205,7 @@ contract LosslessTestEnvironment is DSTest {
     /// @notice Generate a report
     function generateReport(address reportedToken, address reportedAdr, address reporter) public returns (uint256) {
       lssToken.transfer(reporter, reportingAmount);
+      lerc20Token.transfer(reportedAdr, reportedAmount);
       evm.warp(block.timestamp + settlementPeriod + 1);
       evm.startPrank(reporter);
       lssToken.approve(address(lssReporting), reportingAmount);
@@ -274,6 +214,7 @@ contract LosslessTestEnvironment is DSTest {
 
     /// @notice Solve Report Positively
     function solveReportPositively(uint256 reportId) public {
+      evm.prank(address(this));
       lssGovernance.losslessVote(reportId, true);
       
       for (uint8 i = 0; i < committeeMembers.length; i++) {
@@ -290,6 +231,7 @@ contract LosslessTestEnvironment is DSTest {
     
     /// @notice Solve Report Negatively
     function solveReportNegatively(uint256 reportId) public {
+      evm.prank(address(this));
       lssGovernance.losslessVote(reportId, false);
       
       for (uint8 i = 0; i < committeeMembers.length; i++) {
@@ -302,5 +244,40 @@ contract LosslessTestEnvironment is DSTest {
       lssGovernance.tokenOwnersVote(reportId, false);
 
       lssGovernance.resolveReport(reportId);
+    }
+
+    /// @notice Modular Report solving
+    function solveReport(uint256 reportId, uint256 amountOfMembers, bool memberVote, bool losslessVote, bool adminVote) public {
+      require(amountOfMembers <= committeeMembers.length, "TEST: Not enough members");
+
+      evm.prank(address(this));
+      lssGovernance.losslessVote(reportId, losslessVote);
+      
+      for (uint8 i = 0; i < amountOfMembers; i++) {
+        evm.prank(committeeMembers[i]);
+        lssGovernance.committeeMemberVote(reportId, memberVote);
+      }
+
+      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
+      evm.prank(reportedToken.admin());
+      lssGovernance.tokenOwnersVote(reportId, adminVote);
+
+      lssGovernance.resolveReport(reportId);
+    }
+
+    /// @notice Stake on a report
+    function stakeOnReport(uint256 reportId, uint256 amountOfStakers, uint256 skipTime) public {
+      require(amountOfStakers <= stakers.length, "TEST: Not enough stakers");
+      
+      for (uint8 i = 0; i < amountOfStakers; i++) {
+        evm.prank(address(this));
+        lssToken.transfer(stakers[i], stakingAmount);
+        evm.startPrank(stakers[i]);
+        lssToken.approve(address(lssStaking), stakingAmount);
+        evm.warp(settlementPeriod + 1);
+        lssStaking.stake(reportId);
+        evm.warp(skipTime);
+        evm.stopPrank();
+      }
     }
 }
