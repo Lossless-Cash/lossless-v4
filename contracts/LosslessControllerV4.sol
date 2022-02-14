@@ -101,6 +101,27 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => BurnableTokenConfig) burnableTokenConfig;
 
+    struct ThreePilarsVotes {
+        uint8 committeeAgree;
+        bool losslessVote;
+        bool losslessVoted;
+        bool tokenOwnersVote;
+        bool tokenOwnersVoted;
+        mapping (address => bool) memberVoted;
+    }
+
+    struct ExtraordinaryRetrieval {
+        uint8 proposal;
+        uint256 porposedTimestamp;
+        address[] addresses;
+        address retrievalAddress;
+        bool retrieved;
+        bool walletAccepted;
+        mapping (uint8 => ThreePilarsVotes) votesOnRetrieval;
+    }
+
+    mapping(ILERC20 => ExtraordinaryRetrieval) extraordinaryRetrieval; 
+
     // --- MODIFIERS ---
 
     /// @notice Avoids execution from other than the Recovery Admin
@@ -529,6 +550,17 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         }
         
         return totalAmount - toLssStaking - toLssReporting - committeeRewardFunds - (totalAmount * losslessReward / HUNDRED);
+    }
+
+    /// @notice This function sets a proposal to retrieve funds from a blacklisted account extraordinarily
+    /// @param _addresses Addreses to retrieve the blacklisted funds
+    /// @param _token Token to retrieve the funds from
+    function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public onlyLosslessAdmin {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            require(blacklist[_addresses[i]], "LSS: An address not in blacklist");
+        }
+
+
     }
 
 
