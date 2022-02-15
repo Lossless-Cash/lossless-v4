@@ -51,10 +51,11 @@ contract LosslessTestEnvironment is DSTest {
 
     uint256 public totalSupply = 100000000000000000000;
     uint256 public mintAndBurnLimit = 99999999;
-    uint256 public settlementPeriod = 600;
+    uint256 public settlementPeriod = 10 minutes;
+    uint256 public extraordinaryPeriod = 10 minutes;
 
-    uint256 public mintPeriod = 600;
-    uint256 public burnPeriod = 600;
+    uint256 public mintPeriod = 10 minutes;
+    uint256 public burnPeriod = 10 minutes;
 
     uint256 public stakingAmount = 1000;
     uint256 public reportingAmount = 1000;
@@ -69,7 +70,7 @@ contract LosslessTestEnvironment is DSTest {
     uint256 public walletDispute = 7 days;
 
     uint256 public dexTransferTreshold = 200;
-    uint256 public settlementTimelock = 60;
+    uint256 public settlementTimelock = 1 minutes;
 
     uint256 public reportedAmount = 100000;
 
@@ -205,6 +206,8 @@ contract LosslessTestEnvironment is DSTest {
 
       lssController.setDexTransferThreshold(dexTransferTreshold);
       lssController.setSettlementTimeLock(settlementTimelock);
+
+      lssController.setExtraordinaryRetrievalPeriod(extraordinaryPeriod);
     }
 
     /// @notice Generate a report
