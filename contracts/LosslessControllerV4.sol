@@ -586,7 +586,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public onlyTokenAdmin(_token) {
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
 
-        require(proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod > block.timestamp, "LSS: Another Proposal active");
+        require(proposal.retrievalAddress == address(0), "LSS: Proposal already Active");
         
         for (uint256 i = 0; i < _addresses.length; i++) {
             require(blacklist[_addresses[i]], "LSS: An address not in blacklist");
@@ -607,8 +607,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
         require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
-        require(proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp, "LSS: Proposal expired");
-        require(proposal.proposalAccepted, "LSS: Proposal not accepted");
+        require(!proposal.proposalAccepted, "LSS: Proposal not accepted");
         require(!proposal.retrieved, "LSS: Already executed");
 
         uint256 fundsToRetrieve;
@@ -619,6 +618,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         }
 
         proposal.retrieved = true;
+        proposal.proposalNum += 1;
 
         _token.transferOutBlacklistedFunds(addresses);
         _token.transfer(proposal.retrievalAddress, fundsToRetrieve);
@@ -631,7 +631,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
 
-        require(proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp, "LSS: Proposal expired");
         require(!proposal.proposalAccepted, "LSS: Proposal already accepted");
         require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
 
@@ -645,11 +644,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
             require(!voteOnProposal.losslessVoted, "LSS: Already Voted");
             voteOnProposal.losslessVote = true;
             voteOnProposal.losslessVoted = true;
-        } else if (msg.sender == _token.admin()) {
-            require(!voteOnProposal.tokenOwnersVoted, "LSS: Already Voted");
-            voteOnProposal.tokenOwnersVote = true;
-            voteOnProposal.tokenOwnersVoted = true;
-        } else revert ("LSS: Role cannot reject.");
+        } else revert ("LSS: Role cannot accept.");
     }
 
     /// @notice This function determins if the proposal is accepted
@@ -668,14 +663,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         if (voteOnProposal.losslessVote) {
             agreementCount += 1;
         }
-
-        if (voteOnProposal.tokenOwnersVote) {
-            agreementCount += 1;
-        }
         
-        if (agreementCount >= 2) {
+        if (agreementCount == 2) {
             proposal.proposalAccepted = true;
-            proposal.proposalNum += 1;
             return true;
         }
 

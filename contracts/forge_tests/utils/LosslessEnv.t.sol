@@ -288,4 +288,27 @@ contract LosslessTestEnvironment is DSTest {
         evm.stopPrank();
       }
     }
+
+    /// @notice Proposes wallet and retrieves funds
+    function retrieveFundsForReport(uint256 reportId, bool dispute, address retrieveTo) public {
+      evm.prank(address(this));
+      lssGovernance.proposeWallet(reportId, retrieveTo);
+
+      if (dispute) {
+        for (uint i = 0; i < committeeMembers.length; i++) {
+          evm.prank(committeeMembers[i]);
+          lssGovernance.rejectWallet(reportId);
+        }
+
+        evm.prank(randTokenAdmin);
+        lssGovernance.rejectWallet(reportId);
+
+        evm.prank(address(this));
+        lssGovernance.rejectWallet(reportId);
+      }
+
+      evm.warp(block.timestamp + walletDispute + 1 hours);
+      evm.prank(retrieveTo);
+      lssGovernance.retrieveFunds(reportId);
+    }
 }
