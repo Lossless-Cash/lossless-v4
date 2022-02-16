@@ -580,6 +580,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     // --- EXTRAORDINARY RETRIEVAL ---
 
     /// @notice This function sets a proposal to retrieve funds from a blacklisted account extraordinarily
+    /// @dev Only one proposal can be active at the time. It has to be accepted, otherwise it expires.
     /// @param _addresses Addreses to retrieve the blacklisted funds
     /// @param _token Token to retrieve the funds from
     function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public onlyTokenAdmin(_token) {
@@ -591,7 +592,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
             require(blacklist[_addresses[i]], "LSS: An address not in blacklist");
         }
 
-        proposal.proposalNum += 1;
         proposal.porposedTimestamp = block.timestamp;
         proposal.addresses = _addresses;
         proposal.retrievalAddress = msg.sender;
@@ -600,9 +600,90 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function executes a proposal to retrieve funds from a blacklisted account
     /// @param _token Token to retrieve the funds from
     function executeRetrievalProposal(ILERC20 _token) override public onlyTokenAdmin(_token) {
+        
+        if (_determineVoteOnProposal(_token)) {
+            emit ExtraordinaryProposalAccept(_token);
+        }
+
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
+        require(proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp, "LSS: Proposal expired");
         require(proposal.proposalAccepted, "LSS: Proposal not accepted");
         require(!proposal.retrieved, "LSS: Already executed");
+
+        uint256 fundsToRetrieve;
+        address[] memory addresses = proposal.addresses;
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            fundsToRetrieve += _token.balanceOf(addresses[i]);
+        }
+
+        proposal.retrieved = true;
+
+        _token.transferOutBlacklistedFunds(addresses);
+        _token.transfer(proposal.retrievalAddress, fundsToRetrieve);
+    }
+
+    /// @notice This function is used to accept an extraordinary proposal
+    /// @dev Only can be run by the three pilars.
+    /// @param _token Report to propose the wallet
+    function acceptProposal(ILERC20 _token) override public whenNotPaused {
+
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+
+        require(proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp, "LSS: Proposal expired");
+        require(!proposal.proposalAccepted, "LSS: Proposal already accepted");
+        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
+
+        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
+
+        if (losslessGovernance.isCommitteeMember(msg.sender)) {
+            require(!voteOnProposal.memberVoted[msg.sender], "LSS: Already Voted");
+            voteOnProposal.committeeAgree += 1;
+            voteOnProposal.memberVoted[msg.sender] = true;
+        } else if (msg.sender == admin) {
+            require(!voteOnProposal.losslessVoted, "LSS: Already Voted");
+            voteOnProposal.losslessVote = true;
+            voteOnProposal.losslessVoted = true;
+        } else if (msg.sender == _token.admin()) {
+            require(!voteOnProposal.tokenOwnersVoted, "LSS: Already Voted");
+            voteOnProposal.tokenOwnersVote = true;
+            voteOnProposal.tokenOwnersVoted = true;
+        } else revert ("LSS: Role cannot reject.");
+    }
+
+    /// @notice This function determins if the proposal is accepted
+    /// @param _token Token for proposal
+    function _determineVoteOnProposal(ILERC20 _token) private returns(bool){
+        
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
+
+        uint256 agreementCount;
+        
+        if (voteOnProposal.committeeAgree < (losslessGovernance.committeeMembersCount() >> 2) + 1 ){
+            agreementCount += 1;
+        }
+
+        if (voteOnProposal.losslessVote) {
+            agreementCount += 1;
+        }
+
+        if (voteOnProposal.tokenOwnersVote) {
+            agreementCount += 1;
+        }
+        
+        if (agreementCount >= 2) {
+            proposal.proposalAccepted = true;
+            proposal.proposalNum += 1;
+            return true;
+        }
+
+        if (proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp) {
+            proposal.proposalNum += 1;
+            proposal.retrievalAddress = address(0);
+        }
+        return false;
     }
 
     // --- BEFORE HOOKS ---
