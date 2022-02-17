@@ -217,7 +217,9 @@ contract LosslessTestEnvironment is DSTest {
       evm.warp(block.timestamp + settlementPeriod + 1);
       evm.startPrank(reporter);
       lssToken.approve(address(lssReporting), reportingAmount);
-      return lssReporting.report(ILERC20(reportedToken), reportedAdr);
+      uint256 reportId = lssReporting.report(ILERC20(reportedToken), reportedAdr);
+      evm.stopPrank();
+      return reportId;
     }
 
     /// @notice Solve Report Positively

@@ -117,8 +117,8 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         uint256 porposedTimestamp;
         address[] addresses;
         address retrievalAddress;
-        bool retrieved;
         bool proposalAccepted;
+        mapping (uint8 => bool) retrieved;
         mapping (uint8 => ThreePilarsVotes) votesOnRetrieval;
     }
 
@@ -600,15 +600,11 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function executes a proposal to retrieve funds from a blacklisted account
     /// @param _token Token to retrieve the funds from
     function executeRetrievalProposal(ILERC20 _token) override public onlyTokenAdmin(_token) {
-        
-        if (_determineVoteOnProposal(_token)) {
-            emit ExtraordinaryProposalAccept(_token);
-        }
 
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        require(!proposal.retrieved[proposal.proposalNum], "LSS: Already executed");
         require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
-        require(!proposal.proposalAccepted, "LSS: Proposal not accepted");
-        require(!proposal.retrieved, "LSS: Already executed");
+        require(proposal.proposalAccepted, "LSS: Proposal not accepted");
 
         uint256 fundsToRetrieve;
         address[] memory addresses = proposal.addresses;
@@ -617,11 +613,12 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
             fundsToRetrieve += _token.balanceOf(addresses[i]);
         }
 
-        proposal.retrieved = true;
+        proposal.retrieved[proposal.proposalNum] = true;
         proposal.proposalNum += 1;
 
         _token.transferOutBlacklistedFunds(addresses);
         _token.transfer(proposal.retrievalAddress, fundsToRetrieve);
+        proposal.retrievalAddress = address(0);
     }
 
     /// @notice This function is used to accept an extraordinary proposal
@@ -630,8 +627,12 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     function acceptProposal(ILERC20 _token) override public whenNotPaused {
 
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        
+        if (proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp) {
+            proposal.proposalNum += 1;
+            proposal.retrievalAddress = address(0);
+        }
 
-        require(!proposal.proposalAccepted, "LSS: Proposal already accepted");
         require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
 
         ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
@@ -644,7 +645,11 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
             require(!voteOnProposal.losslessVoted, "LSS: Already Voted");
             voteOnProposal.losslessVote = true;
             voteOnProposal.losslessVoted = true;
-        } else revert ("LSS: Role cannot accept.");
+        } else revert ("LSS: Role cannot accept");
+
+        if (_determineVoteOnProposal(_token)) {
+            emit ExtraordinaryProposalAccept(_token);
+        }
     }
 
     /// @notice This function determins if the proposal is accepted
@@ -669,10 +674,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
             return true;
         }
 
-        if (proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp) {
-            proposal.proposalNum += 1;
-            proposal.retrievalAddress = address(0);
-        }
         return false;
     }
 
