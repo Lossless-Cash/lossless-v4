@@ -13,8 +13,8 @@ abstract contract LERC20Mintable is Context, LERC20 {
         _;
     }
 
-    function mint(address to, uint256 amount) public virtual lssMint(msg.sender, to, amount) {
-        require(msg.sender == admin, "LERC20: Must be admin");
+    function mint(address to, uint256 amount) public virtual lssMint(_msgSender(), to, amount) {
+        require(_msgSender() == admin, "LERC20: Must be admin");
         _mint(to, amount);
     }
 }
