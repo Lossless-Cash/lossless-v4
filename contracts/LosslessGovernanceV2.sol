@@ -5,15 +5,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "../../Interfaces/ILosslessERC20.sol";
-import "../../Interfaces/ILosslessController.sol";
-import "../../Interfaces/ILosslessStaking.sol";
-import "../../Interfaces/ILosslessReporting.sol";
-import "../../Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/ILosslessERC20.sol";
+import "./Interfaces/ILosslessController.sol";
+import "./Interfaces/ILosslessStaking.sol";
+import "./Interfaces/ILosslessReporting.sol";
+import "./Interfaces/ILosslessGovernance.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
-contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
 
     uint256 override public constant LSS_TEAM_INDEX = 0;
     uint256 override public constant TOKEN_OWNER_INDEX = 1;
@@ -76,6 +76,29 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
 
     address[] private reportedAddresses;
 
+    /// --- V2 Variables
+
+    struct ThreePilarsVotes {
+        uint8 committeeAgree;
+        bool losslessVote;
+        bool losslessVoted;
+        bool tokenOwnersVote;
+        bool tokenOwnersVoted;
+        mapping (address => bool) memberVoted;
+    }
+
+    struct ExtraordinaryRetrieval {
+        uint8 proposalNum;
+        uint256 porposedTimestamp;
+        address[] addresses;
+        address retrievalAddress;
+        bool proposalAccepted;
+        mapping (uint8 => bool) retrieved;
+        mapping (uint8 => ThreePilarsVotes) votesOnRetrieval;
+    }
+
+    mapping(ILERC20 => ExtraordinaryRetrieval) extraordinaryRetrieval; 
+
     function initialize(ILssReporting _losslessReporting, ILssController _losslessController, ILssStaking _losslessStaking, uint256 _walletDisputePeriod) public initializer {
         losslessReporting = _losslessReporting;
         losslessController = _losslessController;
@@ -95,6 +118,11 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         _;
     }
 
+    modifier onlyTokenAdmin(ILERC20 _token) {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        _;
+    }
+
     // --- ADMINISTRATION ---
 
     function pause() public onlyLosslessPauseAdmin  {
@@ -109,7 +137,7 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
     /// @notice This function gets the contract version
     /// @return Version of the contract
     function getVersion() external pure returns (uint256) {
-        return 1;
+        return 2;
     }
     
     /// @notice This function determines if an address belongs to the Committee
@@ -595,7 +623,104 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         emit LosslessClaim(reportTokens, _reportId, amountToClaim);
     }
 
-    function acceptProposal(ILERC20 _token) override external {}
-    function executeRetrievalProposal(ILERC20 _token) override external {}
-    function extaordinaryRetrievalProposal(address[] calldata _address, ILERC20 _token) override external {}
+    // --- EXTRAORDINARY RETRIEVAL ---
+
+    /// @notice This function sets a proposal to retrieve funds from a blacklisted account extraordinarily
+    /// @dev Only one proposal can be active at the time. It has to be accepted, otherwise it expires.
+    /// @param _addresses Addreses to retrieve the blacklisted funds
+    /// @param _token Token to retrieve the funds from
+    function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+
+        require(proposal.retrievalAddress == address(0), "LSS: Proposal already Active");
+        
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            require(losslessController.blacklist(_addresses[i]), "LSS: An address not in blacklist");
+        }
+
+        proposal.porposedTimestamp = block.timestamp;
+        proposal.addresses = _addresses;
+        proposal.retrievalAddress = msg.sender;
+    }
+
+    /// @notice This function executes a proposal to retrieve funds from a blacklisted account
+    /// @param _token Token to retrieve the funds froms
+    function executeRetrievalProposal(ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
+
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        require(!proposal.retrieved[proposal.proposalNum], "LSS: Already executed");
+        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
+        require(proposal.proposalAccepted, "LSS: Proposal not accepted");
+
+        uint256 fundsToRetrieve = 0;
+        address[] memory addresses = proposal.addresses;
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            fundsToRetrieve += _token.balanceOf(addresses[i]);
+        }
+
+        proposal.retrieved[proposal.proposalNum] = true;
+        proposal.proposalNum += 1;
+
+        losslessController.extraordinaryRetrieval(_token, addresses, fundsToRetrieve);
+        _token.transfer(proposal.retrievalAddress, fundsToRetrieve);
+        proposal.retrievalAddress = address(0);
+    }
+
+    /// @notice This function is used to accept an extraordinary proposal
+    /// @dev Only can be run by the three pilars.
+    /// @param _token Report to propose the wallet
+    function acceptProposal(ILERC20 _token) override public whenNotPaused {
+
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        
+        if (proposal.porposedTimestamp + losslessController.extraordinaryRetrievalProposalPeriod() < block.timestamp) {
+            proposal.proposalNum += 1;
+            proposal.retrievalAddress = address(0);
+        }
+
+        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
+
+        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
+
+        if (isCommitteeMember(msg.sender)) {
+            require(!voteOnProposal.memberVoted[msg.sender], "LSS: Already Voted");
+            voteOnProposal.committeeAgree += 1;
+            voteOnProposal.memberVoted[msg.sender] = true;
+        } else if (msg.sender == losslessController.admin()) {
+            require(!voteOnProposal.losslessVoted, "LSS: Already Voted");
+            voteOnProposal.losslessVote = true;
+            voteOnProposal.losslessVoted = true;
+        } else revert ("LSS: Role cannot accept");
+
+        if (_determineVoteOnProposal(_token)) {
+            emit ExtraordinaryProposalAccept(_token);
+        }
+    }
+
+    /// @notice This function determins if the proposal is accepted
+    /// @param _token Token for proposal
+    function _determineVoteOnProposal(ILERC20 _token) private returns(bool){
+        
+        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
+        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
+
+        uint256 agreementCount = 0;
+        
+        if (voteOnProposal.committeeAgree < (committeeMembersCount >> 2) + 1 ){
+            agreementCount += 1;
+        }
+
+        if (voteOnProposal.losslessVote) {
+            agreementCount += 1;
+        }
+        
+        if (agreementCount == 2) {
+            proposal.proposalAccepted = true;
+            return true;
+        }
+
+        return false;
+    }
+
 }

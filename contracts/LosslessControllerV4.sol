@@ -79,7 +79,8 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
 
-    // --- V4 VARIABLES ---
+    // --- V4 VARIABLES
+
 
     struct MintableTokenConfig {
         uint256 mintPeriod;
@@ -99,28 +100,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => BurnableTokenConfig) burnableTokenConfig;
 
-    uint256 public extraordinaryRetrievalProposalPeriod;
-
-    struct ThreePilarsVotes {
-        uint8 committeeAgree;
-        bool losslessVote;
-        bool losslessVoted;
-        bool tokenOwnersVote;
-        bool tokenOwnersVoted;
-        mapping (address => bool) memberVoted;
-    }
-
-    struct ExtraordinaryRetrieval {
-        uint8 proposalNum;
-        uint256 porposedTimestamp;
-        address[] addresses;
-        address retrievalAddress;
-        bool proposalAccepted;
-        mapping (uint8 => bool) retrieved;
-        mapping (uint8 => ThreePilarsVotes) votesOnRetrieval;
-    }
-
-    mapping(ILERC20 => ExtraordinaryRetrieval) extraordinaryRetrieval; 
+    uint256 public override extraordinaryRetrievalProposalPeriod;
 
     // --- MODIFIERS ---
 
@@ -353,14 +333,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         emit SettlementPeriodChange(_token, config.tokenLockTimeframe);
     }
 
-    /// @notice This function sets the new duration for the extraordinary retrieval proposal
-    /// @param _newPeriod New time in seconds
-    function setExtraordinaryRetrievalPeriod(uint256 _newPeriod) override public onlyLosslessAdmin {
-        require(_newPeriod != extraordinaryRetrievalProposalPeriod, "LSS: Already set to that amount");
-        extraordinaryRetrievalProposalPeriod = _newPeriod;
-        emit NewExtraordinaryPeriod(extraordinaryRetrievalProposalPeriod);
-    }
-
     /// @notice This function activates the emergency mode
     /// @dev When a report gets generated for a token, it enters an emergency state globally.
     /// The emergency period will be active for one settlement period.
@@ -381,6 +353,14 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     // --- V4 Setters ---
     
+    /// @notice This function sets the new duration for the extraordinary retrieval proposal
+    /// @param _newPeriod New time in seconds
+    function setExtraordinaryRetrievalPeriod(uint256 _newPeriod) public override onlyLosslessAdmin {
+        require(_newPeriod != extraordinaryRetrievalProposalPeriod, "LSS: Already set to that amount");
+        extraordinaryRetrievalProposalPeriod = _newPeriod;
+        emit NewExtraordinaryPeriod(extraordinaryRetrievalProposalPeriod);
+    }
+
     /// @notice This function sets the mint limit per period
     /// @param _token Token on which the mint limit will be set
     /// @param _limit Limit of tokens that can be minted
@@ -492,6 +472,15 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         return _token.balanceOf(account) - cp.cummulativeAmount;
     }
 
+    // EXTRAORDINARY RETRIEVAL
+
+    /// @notice This function retrieves funds for the extraodinary retrieval
+    /// @param _token Token to retrieve the funds froms
+    function extraordinaryRetrieval(ILERC20 _token, address[] calldata addresses, uint256 fundsToRetrieve) override public whenNotPaused onlyLosslessEnv {
+        _token.transferOutBlacklistedFunds(addresses);
+        _token.transfer(address(losslessGovernance), fundsToRetrieve);
+    }
+
     // LOCKs & QUEUES
 
     /// @notice This function add transfers to the lock queues
@@ -573,106 +562,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         ReceiveCheckpoint storage cp = queue.lockedFunds[queue.last];
         cp.cummulativeAmount -= amountLeft;
         queue.touchedTimestamp = block.timestamp;
-    }
-
-    // --- EXTRAORDINARY RETRIEVAL ---
-
-    /// @notice This function sets a proposal to retrieve funds from a blacklisted account extraordinarily
-    /// @dev Only one proposal can be active at the time. It has to be accepted, otherwise it expires.
-    /// @param _addresses Addreses to retrieve the blacklisted funds
-    /// @param _token Token to retrieve the funds from
-    function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
-        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
-
-        require(proposal.retrievalAddress == address(0), "LSS: Proposal already Active");
-        
-        for (uint256 i = 0; i < _addresses.length; i++) {
-            require(blacklist[_addresses[i]], "LSS: An address not in blacklist");
-        }
-
-        proposal.porposedTimestamp = block.timestamp;
-        proposal.addresses = _addresses;
-        proposal.retrievalAddress = msg.sender;
-    }
-
-    /// @notice This function executes a proposal to retrieve funds from a blacklisted account
-    /// @param _token Token to retrieve the funds from
-    function executeRetrievalProposal(ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
-
-        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
-        require(!proposal.retrieved[proposal.proposalNum], "LSS: Already executed");
-        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
-        require(proposal.proposalAccepted, "LSS: Proposal not accepted");
-
-        uint256 fundsToRetrieve = 0;
-        address[] memory addresses = proposal.addresses;
-
-        for (uint256 i = 0; i < addresses.length; i++) {
-            fundsToRetrieve += _token.balanceOf(addresses[i]);
-        }
-
-        proposal.retrieved[proposal.proposalNum] = true;
-        proposal.proposalNum += 1;
-
-        _token.transferOutBlacklistedFunds(addresses);
-        _token.transfer(proposal.retrievalAddress, fundsToRetrieve);
-        proposal.retrievalAddress = address(0);
-    }
-
-    /// @notice This function is used to accept an extraordinary proposal
-    /// @dev Only can be run by the three pilars.
-    /// @param _token Report to propose the wallet
-    function acceptProposal(ILERC20 _token) override public whenNotPaused {
-
-        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
-        
-        if (proposal.porposedTimestamp + extraordinaryRetrievalProposalPeriod < block.timestamp) {
-            proposal.proposalNum += 1;
-            proposal.retrievalAddress = address(0);
-        }
-
-        require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
-
-        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
-
-        if (losslessGovernance.isCommitteeMember(msg.sender)) {
-            require(!voteOnProposal.memberVoted[msg.sender], "LSS: Already Voted");
-            voteOnProposal.committeeAgree += 1;
-            voteOnProposal.memberVoted[msg.sender] = true;
-        } else if (msg.sender == admin) {
-            require(!voteOnProposal.losslessVoted, "LSS: Already Voted");
-            voteOnProposal.losslessVote = true;
-            voteOnProposal.losslessVoted = true;
-        } else revert ("LSS: Role cannot accept");
-
-        if (_determineVoteOnProposal(_token)) {
-            emit ExtraordinaryProposalAccept(_token);
-        }
-    }
-
-    /// @notice This function determins if the proposal is accepted
-    /// @param _token Token for proposal
-    function _determineVoteOnProposal(ILERC20 _token) private returns(bool){
-        
-        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
-        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
-
-        uint256 agreementCount = 0;
-        
-        if (voteOnProposal.committeeAgree < (losslessGovernance.committeeMembersCount() >> 2) + 1 ){
-            agreementCount += 1;
-        }
-
-        if (voteOnProposal.losslessVote) {
-            agreementCount += 1;
-        }
-        
-        if (agreementCount == 2) {
-            proposal.proposalAccepted = true;
-            return true;
-        }
-
-        return false;
     }
 
     // --- BEFORE HOOKS ---

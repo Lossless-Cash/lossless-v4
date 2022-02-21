@@ -18,20 +18,20 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             uint256 previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
@@ -54,20 +54,20 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             }
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             uint256 previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + (toRetrieveExtraordinarily * addressArray.length), lerc20Token.balanceOf(randTokenAdmin));
         }
@@ -85,7 +85,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
 
             evm.prank(address(500));
             evm.expectRevert("LSS: Must be Token Admin");
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
         }
     }
 
@@ -100,11 +100,11 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(999));
             evm.expectRevert("LSS: Role cannot accept");
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
         }
     }
 
@@ -119,19 +119,19 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             evm.prank(address(999));
             evm.expectRevert("LSS: Must be Token Admin");
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
         }
     }
 
@@ -146,11 +146,11 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: Proposal already Active");
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
         }
     }
 
@@ -167,7 +167,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
 
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: An address not in blacklist");
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
         }
     }
 
@@ -176,7 +176,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
     function testExtraordinaryRetrievalNoProposal() public {
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: No proposal Active");
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
     }
 
     /// @notice Test extraordinary funds retrieval execute non accepted proposal
@@ -190,11 +190,11 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: Proposal not accepted");
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
         }
     }
 
@@ -209,26 +209,26 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             uint256 previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
 
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: No proposal Active");
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
         }
     }
 
@@ -237,12 +237,12 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
     function testExtraordinaryRetrievalVoteOnNoProposal() public {
             evm.prank(address(this));
             evm.expectRevert("LSS: No proposal Active");
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
                 evm.expectRevert("LSS: No proposal Active");
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
     }
 
@@ -257,30 +257,30 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             evm.prank(address(this));
             evm.expectRevert("LSS: Already Voted");
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
                 evm.expectRevert("LSS: Already Voted");
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             uint256 previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
@@ -297,18 +297,18 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.warp(block.timestamp + walletDispute + toRetrieveExtraordinarily);
 
             evm.prank(address(this));
             evm.expectRevert("LSS: No proposal Active");
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
                 evm.expectRevert("LSS: No proposal Active");
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
         }
     }
@@ -324,40 +324,40 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             uint256 previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
 
             generateTestAddress(addressArray[0], randRetrieve);
 
             evm.prank(randTokenAdmin);
-            lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
+            lssGovernance.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
             evm.prank(address(this));
-            lssController.acceptProposal(lerc20Token);
+            lssGovernance.acceptProposal(lerc20Token);
 
             for (uint i = 0; i < committeeMembers.length; i++) {
                 evm.prank(committeeMembers[i]);
-                lssController.acceptProposal(lerc20Token);
+                lssGovernance.acceptProposal(lerc20Token);
             }
 
             previousBal = lerc20Token.balanceOf(randTokenAdmin);
 
             evm.prank(randTokenAdmin);
-            lssController.executeRetrievalProposal(lerc20Token);
+            lssGovernance.executeRetrievalProposal(lerc20Token);
 
             assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
