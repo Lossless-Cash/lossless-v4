@@ -11,6 +11,8 @@ import "./Interfaces/ILosslessStaking.sol";
 import "./Interfaces/ILosslessReporting.sol";
 import "./Interfaces/ILosslessGovernance.sol";
 
+import "hardhat/console.sol";
+
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
 contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
@@ -424,7 +426,7 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
         for(uint256 i = 0; i < _addresses.length; i++) {
             address singleAddress = _addresses[i];
             Compensation storage addressCompensation = compensation[singleAddress]; 
-            losslessController.resolvedNegatively(singleAddress);      
+            losslessController.resolvedNegatively(singleAddress);
             addressCompensation.amount += compensationAmount;
             addressCompensation.payed = false;
         }
@@ -698,5 +700,24 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
             proposal.proposalAccepted = true;
             emit ExtraordinaryProposalAccept(_token);
         }
+    }
+
+    /// RETRIEVE COMPENSATION FOR CONTRACTS
+
+    /// @notice This lets an erroneously reported account to retrieve compensation
+    function retrieveCompensationForContract(address token) public whenNotPaused {
+        require(!compensation[token].payed, "LSS: Already retrieved");
+        require(compensation[token].amount > 0, "LSS: No retribution assigned");
+        
+        address tokenAdmin = ILERC20(token).admin();
+        require(msg.sender == tokenAdmin, "LSS: Must be token admin");
+        
+        compensation[token].payed = true;
+
+        losslessReporting.retrieveCompensation(tokenAdmin, compensation[token].amount);
+
+        emit CompensationRetrieval(tokenAdmin, compensation[token].amount);
+
+        compensation[token].amount = 0;
     }
 }

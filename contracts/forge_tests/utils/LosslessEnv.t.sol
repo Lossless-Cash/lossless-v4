@@ -72,6 +72,8 @@ contract LosslessTestEnvironment is DSTest {
     uint256 public committeeReward = 2;
     uint256 public losslessReward = 10;
 
+    uint256 public compensationPercentage = 10;
+
     uint256 public walletDispute = 7 days;
 
     uint256 public dexTransferTreshold = 200;
@@ -194,6 +196,7 @@ contract LosslessTestEnvironment is DSTest {
 
       lssGovernance.initialize(lssReporting, lssController, lssStaking, walletDispute);
       lssGovernance.addCommitteeMembers(committeeMembers);
+      lssGovernance.setCompensationAmount(compensationPercentage);
 
       lssReporting.setLosslessGovernance(lssGovernance);
       lssStaking.setLosslessGovernance(lssGovernance);
