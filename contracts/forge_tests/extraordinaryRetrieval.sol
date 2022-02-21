@@ -5,7 +5,7 @@ import "./utils/LosslessEnv.t.sol";
 
 contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
 
-    uint256 public constant toRetrieveExtraordinarily = toRetrieveExtraordinarily;
+    uint256 public constant toRetrieveExtraordinarily = 100;
 
     /// @notice Test extraordinary funds retrieval for one address
     /// @dev should not revert

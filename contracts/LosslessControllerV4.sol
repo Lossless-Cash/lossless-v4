@@ -657,7 +657,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
         ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
 
-        uint256 agreementCount;
+        uint256 agreementCount = 0;
         
         if (voteOnProposal.committeeAgree < (losslessGovernance.committeeMembersCount() >> 2) + 1 ){
             agreementCount += 1;
