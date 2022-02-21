@@ -693,34 +693,10 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
             voteOnProposal.losslessVoted = true;
         } else revert ("LSS: Role cannot accept");
 
-        if (_determineVoteOnProposal(_token)) {
+        if (voteOnProposal.losslessVote 
+            && (voteOnProposal.committeeAgree < (committeeMembersCount >> 2) + 1 )) {
+            proposal.proposalAccepted = true;
             emit ExtraordinaryProposalAccept(_token);
         }
     }
-
-    /// @notice This function determins if the proposal is accepted
-    /// @param _token Token for proposal
-    function _determineVoteOnProposal(ILERC20 _token) private returns(bool){
-        
-        ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
-        ThreePilarsVotes storage voteOnProposal = proposal.votesOnRetrieval[proposal.proposalNum];
-
-        uint256 agreementCount = 0;
-        
-        if (voteOnProposal.committeeAgree < (committeeMembersCount >> 2) + 1 ){
-            agreementCount += 1;
-        }
-
-        if (voteOnProposal.losslessVote) {
-            agreementCount += 1;
-        }
-        
-        if (agreementCount == 2) {
-            proposal.proposalAccepted = true;
-            return true;
-        }
-
-        return false;
-    }
-
 }
