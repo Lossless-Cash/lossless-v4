@@ -11,8 +11,6 @@ import "./Interfaces/ILosslessStaking.sol";
 import "./Interfaces/ILosslessReporting.sol";
 import "./Interfaces/IProtectionStrategy.sol";
 
-import "hardhat/console.sol";
-
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
 contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
@@ -583,7 +581,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @dev Only one proposal can be active at the time. It has to be accepted, otherwise it expires.
     /// @param _addresses Addreses to retrieve the blacklisted funds
     /// @param _token Token to retrieve the funds from
-    function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public onlyTokenAdmin(_token) {
+    function extaordinaryRetrievalProposal(address[] calldata _addresses, ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
 
         require(proposal.retrievalAddress == address(0), "LSS: Proposal already Active");
@@ -599,14 +597,14 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     /// @notice This function executes a proposal to retrieve funds from a blacklisted account
     /// @param _token Token to retrieve the funds from
-    function executeRetrievalProposal(ILERC20 _token) override public onlyTokenAdmin(_token) {
+    function executeRetrievalProposal(ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
 
         ExtraordinaryRetrieval storage proposal = extraordinaryRetrieval[_token];
         require(!proposal.retrieved[proposal.proposalNum], "LSS: Already executed");
         require(proposal.retrievalAddress != address(0), "LSS: No proposal Active");
         require(proposal.proposalAccepted, "LSS: Proposal not accepted");
 
-        uint256 fundsToRetrieve;
+        uint256 fundsToRetrieve = 0;
         address[] memory addresses = proposal.addresses;
 
         for (uint256 i = 0; i < addresses.length; i++) {

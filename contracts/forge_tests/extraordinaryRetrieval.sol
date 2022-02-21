@@ -5,6 +5,8 @@ import "./utils/LosslessEnv.t.sol";
 
 contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
 
+    uint256 public constant toRetrieveExtraordinarily = toRetrieveExtraordinarily;
+
     /// @notice Test extraordinary funds retrieval for one address
     /// @dev should not revert
     function testExtraordinaryRetrievalSingle(address randReported, address randRetrieve) public {
@@ -31,7 +33,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + 100, lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
     }
 
@@ -49,7 +51,6 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
 
             for (uint i = 0; i < addressArray.length; i++) {
                 generateTestAddress(addressArray[i], randRetrieve);
-                console.log('Genero una', i);
             }
 
             evm.prank(randTokenAdmin);
@@ -68,7 +69,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + (100 * addressArray.length), lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + (toRetrieveExtraordinarily * addressArray.length), lerc20Token.balanceOf(randTokenAdmin));
         }
     }
 
@@ -223,7 +224,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + 100, lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
 
             evm.prank(randTokenAdmin);
             evm.expectRevert("LSS: No proposal Active");
@@ -281,7 +282,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + 100, lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
     }
 
@@ -298,7 +299,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.extaordinaryRetrievalProposal(addressArray, lerc20Token);
 
-            evm.warp(block.timestamp + walletDispute + 100);
+            evm.warp(block.timestamp + walletDispute + toRetrieveExtraordinarily);
 
             evm.prank(address(this));
             evm.expectRevert("LSS: No proposal Active");
@@ -338,7 +339,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + 100, lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
 
             generateTestAddress(addressArray[0], randRetrieve);
 
@@ -358,7 +359,7 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
             evm.prank(randTokenAdmin);
             lssController.executeRetrievalProposal(lerc20Token);
 
-            assertEq(previousBal + 100, lerc20Token.balanceOf(randTokenAdmin));
+            assertEq(previousBal + toRetrieveExtraordinarily, lerc20Token.balanceOf(randTokenAdmin));
         }
     }
 
@@ -368,6 +369,6 @@ contract ExtraordinaryFundsRetrieval is LosslessTestEnvironment {
         solveReportPositively(reportId);
         retrieveFundsForReport(reportId, false, retrievalAddress);
         evm.prank(address(this));
-        lerc20Token.transfer(reportedAddress, 100);
+        lerc20Token.transfer(reportedAddress, toRetrieveExtraordinarily);
     }
 }
