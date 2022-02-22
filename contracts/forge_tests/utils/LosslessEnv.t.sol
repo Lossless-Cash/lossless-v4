@@ -151,6 +151,12 @@ contract LosslessTestEnvironment is DSTest {
         address(lssController)
       );
 
+      lerc20WithFees.addExcludedAddress(address(lssController));
+      lerc20WithFees.addExcludedAddress(address(lssReporting));
+      lerc20WithFees.addExcludedAddress(address(lssGovernance));
+      lerc20WithFees.addExcludedAddress(address(lssStaking));
+      lerc20WithFees.addExcludedAddress(address(this));
+    
       // Set up Reporting
       setUpReporting();
 
@@ -222,7 +228,7 @@ contract LosslessTestEnvironment is DSTest {
     /// @notice Generate a report
     function generateReport(address reportedToken, address reportedAdr, address reporter) public returns (uint256) {
       lssToken.transfer(reporter, reportingAmount);
-      lerc20Token.transfer(reportedAdr, reportedAmount);
+      ILERC20(reportedToken).transfer(reportedAdr, reportedAmount);
       evm.warp(block.timestamp + settlementPeriod + 1);
       evm.startPrank(reporter);
       lssToken.approve(address(lssReporting), reportingAmount);

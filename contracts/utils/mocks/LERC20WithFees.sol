@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../first-version/LERC20.sol";
+import "hardhat/console.sol";
 
 contract LERC20WithFees is LERC20 {
 
@@ -48,7 +49,12 @@ contract LERC20WithFees is LERC20 {
       excluded[adr] = true;
     }
 
+    function isExcluded(address adr) public view returns (bool) {
+      return excluded[adr];
+    }
+
     function transfer(address recipient, uint256 amount) public virtual override lssTransfer(recipient, amount) returns (bool) {
+        
         if (!excluded[_msgSender()]) {
           uint256 feeToTake = amount * feeAmount / 1e2;
           amount -= feeToTake;
