@@ -10,8 +10,7 @@ import "./Interfaces/ILosslessController.sol";
 import "./Interfaces/ILosslessStaking.sol";
 import "./Interfaces/ILosslessReporting.sol";
 import "./Interfaces/ILosslessGovernance.sol";
-
-import "hardhat/console.sol";
+import "./Interfaces/IOwnable.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
@@ -571,16 +570,6 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
 
     }
 
-    ///@notice This function verifies is an address belongs to a contract
-    ///@param _addr address to verify
-    function isContract(address _addr) private view returns (bool){
-         uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        return (size > 0);
-    }
-
     ///@notice This function is for committee members to claim their rewards
     ///@param _reportId report ID to claim reward from
     function claimCommitteeReward(uint256 _reportId) override public whenNotPaused {
@@ -704,20 +693,43 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
 
     /// RETRIEVE COMPENSATION FOR CONTRACTS
 
-    /// @notice This lets an erroneously reported account to retrieve compensation
-    function retrieveCompensationForContract(address token) public whenNotPaused {
-        require(!compensation[token].payed, "LSS: Already retrieved");
-        require(compensation[token].amount > 0, "LSS: No retribution assigned");
-        
+    /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
+    function retrieveCompensationForLERC20Contract(address token) public whenNotPaused {
+        require(_isContract(token), "LSS: Must be contract");
         address tokenAdmin = ILERC20(token).admin();
         require(msg.sender == tokenAdmin, "LSS: Must be token admin");
         
+        _retrieveCompensationForContract(token, tokenAdmin);
+    }
+
+    /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
+    function retrieveCompensationForRegularContract(address token) public whenNotPaused {
+        require(_isContract(token), "LSS: Must be contract");
+        address tokenOwner = IOwnable(token).owner();
+        require(msg.sender == tokenOwner, "LSS: Must be token owner");
+
+        _retrieveCompensationForContract(token, tokenOwner);
+    }
+
+    /// @notice This lets an erroneously reported account to retrieve compensation
+    function _retrieveCompensationForContract(address token, address sender) private whenNotPaused {
+        require(!compensation[token].payed, "LSS: Already retrieved");
+        require(compensation[token].amount > 0, "LSS: No retribution assigned");
+        
         compensation[token].payed = true;
 
-        losslessReporting.retrieveCompensation(tokenAdmin, compensation[token].amount);
+        losslessReporting.retrieveCompensation(sender, compensation[token].amount);
 
-        emit CompensationRetrieval(tokenAdmin, compensation[token].amount);
+        emit CompensationRetrieval(sender, compensation[token].amount);
 
         compensation[token].amount = 0;
+    }
+
+    ///@notice This function verifies is an address belongs to a contract
+    ///@param _addr address to verify
+    function _isContract(address _addr) private view returns (bool) {
+        uint size;
+        assembly { size := extcodesize(_addr) }
+        return size > 0;
     }
 }

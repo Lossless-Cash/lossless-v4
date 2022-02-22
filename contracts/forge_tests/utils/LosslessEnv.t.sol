@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "../../utils/first-version/LosslessControllerV1.sol";
 import "../../utils/first-version/LERC20.sol";
+import "../../utils/first-version/ERC20.sol";
 
 import "../../utils/hack-mitigation-protocol/LosslessGovernance.sol";
 import "../../utils/hack-mitigation-protocol/LosslessReporting.sol";
@@ -40,6 +41,7 @@ contract LosslessTestEnvironment is DSTest {
     LERC20MintableMock public lerc20Mintable;
     LERC20 public lssToken;
     LERC20 public lerc20Token;
+    ERC20 public erc20Token;
 
     Evm public evm = Evm(HEVM_ADDRESS);
 
@@ -144,6 +146,12 @@ contract LosslessTestEnvironment is DSTest {
         address(this),
         1 days,
         address(lssController)
+      );
+
+      erc20Token = new ERC20(
+        "ERC20 Token",
+        "ERCT",
+        totalSupply
       );
 
       // Set up Reporting
@@ -253,10 +261,6 @@ contract LosslessTestEnvironment is DSTest {
         lssGovernance.committeeMemberVote(reportId, true);
       }
 
-      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
-      evm.prank(reportedToken.admin());
-      lssGovernance.tokenOwnersVote(reportId, true);
-
       lssGovernance.resolveReport(reportId);
     }
     
@@ -269,10 +273,6 @@ contract LosslessTestEnvironment is DSTest {
         evm.prank(committeeMembers[i]);
         lssGovernance.committeeMemberVote(reportId, false);
       }
-
-      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
-      evm.prank(reportedToken.admin());
-      lssGovernance.tokenOwnersVote(reportId, false);
 
       lssGovernance.resolveReport(reportId);
     }
