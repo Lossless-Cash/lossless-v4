@@ -36,9 +36,7 @@ interface ILssGovernance {
     function claimCommitteeReward(uint256 _reportId) external;
     function setCompensationAmount(uint256 _amount) external;
     function losslessClaim(uint256 _reportId) external;
-    function extaordinaryRetrievalProposal(address[] calldata _address, ILERC20 _token) external;
-    function executeRetrievalProposal(ILERC20 _token) external;
-    function acceptProposal(ILERC20 _token) external;
+    function extaordinaryRetrieval(address[] calldata _address, ILERC20 _token) external;
 
     event NewCommitteeMembers(address[] _members);
     event CommitteeMembersRemoval(address[] _members);

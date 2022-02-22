@@ -595,7 +595,5 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         emit LosslessClaim(reportTokens, _reportId, amountToClaim);
     }
 
-    function acceptProposal(ILERC20 _token) override external {}
-    function executeRetrievalProposal(ILERC20 _token) override external {}
-    function extaordinaryRetrievalProposal(address[] calldata _address, ILERC20 _token) override external {}
+    function extaordinaryRetrieval(address[] calldata _address, ILERC20 _token) override external {}
 }
