@@ -694,21 +694,21 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
     /// RETRIEVE COMPENSATION FOR CONTRACTS
 
     /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
-    function retrieveCompensationForLERC20Contract(address token) public whenNotPaused {
-        require(_isContract(token), "LSS: Must be contract");
-        address tokenAdmin = ILERC20(token).admin();
+    function retrieveCompensationForLERC20Contract(address _contract) public whenNotPaused {
+        require(_isContract(_contract), "LSS: Must be contract");
+        address tokenAdmin = ILERC20(_contract).admin();
         require(msg.sender == tokenAdmin, "LSS: Must be token admin");
         
-        _retrieveCompensationForContract(token, tokenAdmin);
+        _retrieveCompensationForContract(_contract, tokenAdmin);
     }
 
     /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
-    function retrieveCompensationForRegularContract(address token) public whenNotPaused {
-        require(_isContract(token), "LSS: Must be contract");
-        address tokenOwner = IOwnable(token).owner();
+    function retrieveCompensationForRegularContract(address _contract) public whenNotPaused {
+        require(_isContract(_contract), "LSS: Must be contract");
+        address tokenOwner = IOwnable(_contract).owner();
         require(msg.sender == tokenOwner, "LSS: Must be token owner");
 
-        _retrieveCompensationForContract(token, tokenOwner);
+        _retrieveCompensationForContract(_contract, tokenOwner);
     }
 
     /// @notice This lets an erroneously reported account to retrieve compensation
