@@ -1,6 +1,6 @@
 [default]
 src = 'contracts'
-out = 'out'
+out = 'artifacts'
 libs = ['node_modules']
 remappings = [
     '@ensdomains/=node_modules/@ensdomains/',
