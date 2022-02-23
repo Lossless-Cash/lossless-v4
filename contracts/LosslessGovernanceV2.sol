@@ -5,15 +5,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "../../Interfaces/ILosslessERC20.sol";
-import "../../Interfaces/ILosslessController.sol";
-import "../../Interfaces/ILosslessStaking.sol";
-import "../../Interfaces/ILosslessReporting.sol";
-import "../../Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/ILosslessERC20.sol";
+import "./Interfaces/ILosslessController.sol";
+import "./Interfaces/ILosslessStaking.sol";
+import "./Interfaces/ILosslessReporting.sol";
+import "./Interfaces/ILosslessGovernance.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
-contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
 
     uint256 override public constant LSS_TEAM_INDEX = 0;
     uint256 override public constant TOKEN_OWNER_INDEX = 1;
@@ -95,6 +95,11 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         _;
     }
 
+    modifier onlyTokenAdmin(ILERC20 _token) {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        _;
+    }
+
     // --- ADMINISTRATION ---
 
     function pause() public onlyLosslessPauseAdmin  {
@@ -109,7 +114,7 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
     /// @notice This function gets the contract version
     /// @return Version of the contract
     function getVersion() external pure returns (uint256) {
-        return 1;
+        return 2;
     }
     
     /// @notice This function determines if an address belongs to the Committee
@@ -595,5 +600,20 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         emit LosslessClaim(reportTokens, _reportId, amountToClaim);
     }
 
-    function extaordinaryRetrieval(address[] calldata _address, ILERC20 _token) override external {}
+    // --- EXTRAORDINARY RETRIEVAL ---
+
+    /// @notice This function retrieves funds from a blacklisted account extraordinarily
+    /// @param _addresses Addreses to retrieve the blacklisted funds
+    /// @param _token Token to retrieve the funds from
+    function extaordinaryRetrieval(address[] calldata _addresses, ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
+        uint256 fundsToRetrieve = 0;
+
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            require(losslessController.blacklist(_addresses[i]), "LSS: An address not in blacklist");
+            fundsToRetrieve += _token.balanceOf(_addresses[i]);
+        }
+
+        losslessController.extraordinaryRetrieval(_token, _addresses, fundsToRetrieve);
+        _token.transfer(msg.sender, fundsToRetrieve);
+    }
 }

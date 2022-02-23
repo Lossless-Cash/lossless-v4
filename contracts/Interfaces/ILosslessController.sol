@@ -23,6 +23,7 @@ interface ILssController {
     function losslessGovernance() external view returns (ILssGovernance);
     function dexTranferThreshold() external view returns (uint256);
     function settlementTimeLock() external view returns (uint256);
+    function extraordinaryRetrievalProposalPeriod() external view returns (uint256);
     
     function pause() external;
     function unpause() external;
@@ -58,6 +59,8 @@ interface ILssController {
     function beforeBurn(address _account, uint256 _amount) external;
     function afterTransfer(address _sender, address _recipient, uint256 _amount) external;
     function setProtectedAddress(ILERC20 _token, address _protectedAddress, ProtectionStrategy _strategy) external;
+    function setExtraordinaryRetrievalPeriod(uint256 _newPEriod) external;
+    function extraordinaryRetrieval(ILERC20 _token, address[] calldata addresses, uint256 fundsToRetrieve) external;
 
     event AdminChange(address indexed _newAdmin);
     event RecoveryAdminChange(address indexed _newAdmin);
@@ -86,4 +89,5 @@ interface ILssController {
     event NewBurn(ILERC20 indexed token, address indexed account, uint256 indexed amount);
     event NewBurnLimit(ILERC20 indexed token, uint256 indexed limit);
     event NewBurnPeriod(ILERC20 indexed token, uint256 indexed period);
+    event NewExtraordinaryPeriod(uint256 indexed extraordinaryRetrievalProposalPeriod);
 }

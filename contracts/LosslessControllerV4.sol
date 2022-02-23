@@ -11,8 +11,6 @@ import "./Interfaces/ILosslessStaking.sol";
 import "./Interfaces/ILosslessReporting.sol";
 import "./Interfaces/IProtectionStrategy.sol";
 
-import "hardhat/console.sol";
-
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
 contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeable, PausableUpgradeable {
@@ -81,7 +79,8 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     mapping(ILERC20 => TokenConfig) tokenConfig;
 
-    // --- V4 VARIABLES ---
+    // --- V4 VARIABLES
+
 
     struct MintableTokenConfig {
         uint256 mintPeriod;
@@ -100,6 +99,8 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     }
 
     mapping(ILERC20 => BurnableTokenConfig) burnableTokenConfig;
+
+    uint256 public override extraordinaryRetrievalProposalPeriod;
 
     // --- MODIFIERS ---
 
@@ -136,6 +137,13 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
                 msg.sender == address(losslessReporting) || 
                 msg.sender == address(losslessGovernance),
                 "LSS: Lss SC only");
+        _;
+    }
+
+    // --- V4 MODIFIERS ---
+
+    modifier onlyTokenAdmin(ILERC20 _token) {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
         _;
     }
 
@@ -304,11 +312,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function starts a new proposal to change the SettlementPeriod
     /// @param _token to propose the settlement change period on
     /// @param _seconds Time frame that the recieved funds will be locked
-    function proposeNewSettlementPeriod(ILERC20 _token, uint256 _seconds) override public {
-
+    function proposeNewSettlementPeriod(ILERC20 _token, uint256 _seconds) override public onlyTokenAdmin(_token) {
         TokenConfig storage config = tokenConfig[_token];
 
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
         require(config.changeSettlementTimelock <= block.timestamp, "LSS: Time lock in progress");
         config.changeSettlementTimelock = block.timestamp + settlementTimeLock;
         config.proposedTokenLockTimeframe = _seconds;
@@ -317,11 +323,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     /// @notice This function executes the new settlement period after the timelock
     /// @param _token to set time settlement period on
-    function executeNewSettlementPeriod(ILERC20 _token) override public {
-
+    function executeNewSettlementPeriod(ILERC20 _token) override public onlyTokenAdmin(_token) {
         TokenConfig storage config = tokenConfig[_token];
 
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
         require(config.proposedTokenLockTimeframe != 0, "LSS: New Settlement not proposed");
         require(config.changeSettlementTimelock <= block.timestamp, "LSS: Time lock in progress");
         config.tokenLockTimeframe = config.proposedTokenLockTimeframe;
@@ -349,11 +353,18 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     // --- V4 Setters ---
     
+    /// @notice This function sets the new duration for the extraordinary retrieval proposal
+    /// @param _newPeriod New time in seconds
+    function setExtraordinaryRetrievalPeriod(uint256 _newPeriod) public override onlyLosslessAdmin {
+        require(_newPeriod != extraordinaryRetrievalProposalPeriod, "LSS: Already set to that amount");
+        extraordinaryRetrievalProposalPeriod = _newPeriod;
+        emit NewExtraordinaryPeriod(extraordinaryRetrievalProposalPeriod);
+    }
+
     /// @notice This function sets the mint limit per period
     /// @param _token Token on which the mint limit will be set
     /// @param _limit Limit of tokens that can be minted
-    function setTokenMintLimit(ILERC20 _token, uint256 _limit) override external {
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+    function setTokenMintLimit(ILERC20 _token, uint256 _limit) override external onlyTokenAdmin(_token) {
         require(_limit != mintableTokenConfig[_token].mintLimit, "LSS: Cannot set same value");
         mintableTokenConfig[_token].mintLimit = _limit;
         emit NewMintLimit(_token, _limit);
@@ -363,8 +374,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function sets the mint  period
     /// @param _token Token on which the mint period will be set
     /// @param _period Period duration
-    function setTokenMintPeriod(ILERC20 _token, uint256 _period) override external {
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+    function setTokenMintPeriod(ILERC20 _token, uint256 _period) override external onlyTokenAdmin(_token) {
         require(_period != mintableTokenConfig[_token].mintPeriod, "LSS: Cannot set same value");
         mintableTokenConfig[_token].mintPeriod = _period;
         emit NewMintPeriod(_token, _period);
@@ -373,8 +383,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function sets the burn limit per period
     /// @param _token Token on which the burn limit will be set
     /// @param _limit Limit of tokens that can be burned
-    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external {
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+    function setTokenBurnLimit(ILERC20 _token, uint256 _limit) override external onlyTokenAdmin(_token) {
         require(_limit != burnableTokenConfig[_token].burnLimit, "LSS: Cannot set same value");
         burnableTokenConfig[_token].burnLimit = _limit;
         emit NewBurnLimit(_token, _limit);
@@ -383,8 +392,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @notice This function sets the burn period
     /// @param _token Token on which the burn period will be set
     /// @param _period Period duration
-    function setTokenBurnPeriod(ILERC20 _token, uint256 _period) override external {
-        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+    function setTokenBurnPeriod(ILERC20 _token, uint256 _period) override external onlyTokenAdmin(_token) {
         require(_period != burnableTokenConfig[_token].burnPeriod, "LSS: Cannot set same value");
         burnableTokenConfig[_token].burnPeriod = _period;
         emit NewBurnPeriod(_token, _period);
@@ -464,6 +472,15 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         return _token.balanceOf(account) - cp.cummulativeAmount;
     }
 
+    // EXTRAORDINARY RETRIEVAL
+
+    /// @notice This function retrieves funds for the extraodinary retrieval
+    /// @param _token Token to retrieve the funds froms
+    function extraordinaryRetrieval(ILERC20 _token, address[] calldata addresses, uint256 fundsToRetrieve) override public whenNotPaused onlyLosslessEnv {
+        _token.transferOutBlacklistedFunds(addresses);
+        _token.transfer(address(losslessGovernance), fundsToRetrieve);
+    }
+
     // LOCKs & QUEUES
 
     /// @notice This function add transfers to the lock queues
@@ -530,7 +547,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         
         return totalAmount - toLssStaking - toLssReporting - committeeRewardFunds - (totalAmount * losslessReward / HUNDRED);
     }
-
 
     /// @notice This function will lift the locks after a certain amount
     /// @dev The condition to lift the locks is that their checkpoint should be greater than the set amount
