@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "../../utils/first-version/LosslessControllerV1.sol";
 import "../../utils/first-version/LERC20.sol";
+import "../../utils/first-version/ERC20.sol";
 
 import "../../utils/hack-mitigation-protocol/LosslessGovernance.sol";
 import "../../utils/hack-mitigation-protocol/LosslessReporting.sol";
@@ -13,6 +14,7 @@ import "../../utils/hack-mitigation-protocol/LosslessStaking.sol";
 
 import "../../utils/mocks/LERC20BurnableMock.sol";
 import "../../utils/mocks/LERC20MintableMock.sol";
+import "../../LosslessGovernanceV2.sol";
 import "../../LosslessControllerV4.sol";
 
 import "./IEvm.sol";
@@ -23,18 +25,23 @@ contract LosslessTestEnvironment is DSTest {
     LosslessControllerV4 private lssControllerV4;
 
     LosslessReporting public lssReporting;
-    LosslessGovernance public lssGovernance;
+    LosslessGovernance public lssGovernanceV1;
+    LosslessGovernanceV2 public lssGovernanceV2;
     LosslessStaking public lssStaking;
 
     TransparentUpgradeableProxy private transparentProxy;
+    TransparentUpgradeableProxy private transparentProxyGov;
     ProxyAdmin private proxyAdmin;
+    ProxyAdmin private proxyAdminGov;
 
     LosslessControllerV4 public lssController;
+    LosslessGovernanceV2 public lssGovernance;
 
     LERC20BurnableMock public lerc20Burnable;
     LERC20MintableMock public lerc20Mintable;
     LERC20 public lssToken;
     LERC20 public lerc20Token;
+    ERC20 public erc20Token;
 
     Evm public evm = Evm(HEVM_ADDRESS);
 
@@ -51,10 +58,11 @@ contract LosslessTestEnvironment is DSTest {
 
     uint256 public totalSupply = 100000000000000000000;
     uint256 public mintAndBurnLimit = 99999999;
-    uint256 public settlementPeriod = 600;
+    uint256 public settlementPeriod = 10 minutes;
+    uint256 public extraordinaryPeriod = 10 minutes;
 
-    uint256 public mintPeriod = 600;
-    uint256 public burnPeriod = 600;
+    uint256 public mintPeriod = 10 minutes;
+    uint256 public burnPeriod = 10 minutes;
 
     uint256 public stakingAmount = 1000;
     uint256 public reportingAmount = 1000;
@@ -66,10 +74,12 @@ contract LosslessTestEnvironment is DSTest {
     uint256 public committeeReward = 2;
     uint256 public losslessReward = 10;
 
+    uint256 public compensationPercentage = 10;
+
     uint256 public walletDispute = 7 days;
 
     uint256 public dexTransferTreshold = 200;
-    uint256 public settlementTimelock = 60;
+    uint256 public settlementTimelock = 1 minutes;
 
     uint256 public reportedAmount = 100000;
 
@@ -95,7 +105,6 @@ contract LosslessTestEnvironment is DSTest {
       lssController = LosslessControllerV4(address(transparentProxy));
       lssReporting = new LosslessReporting();
       lssStaking = new LosslessStaking();
-      lssGovernance = new LosslessGovernance();
 
       // Set up tokens
 
@@ -139,6 +148,12 @@ contract LosslessTestEnvironment is DSTest {
         address(lssController)
       );
 
+      erc20Token = new ERC20(
+        "ERC20 Token",
+        "ERCT",
+        totalSupply
+      );
+
       // Set up Reporting
       setUpReporting();
 
@@ -160,7 +175,6 @@ contract LosslessTestEnvironment is DSTest {
       lssReporting.setReportLifetime(reportLifetime);
       lssReporting.setReportingAmount(reportingAmount);
       lssReporting.setStakingToken(lssToken);
-      lssReporting.setLosslessGovernance(lssGovernance);
       lssReporting.setReporterReward(reporterReward);
       lssReporting.setStakersReward(stakersReward);
       lssReporting.setCommitteeReward(committeeReward);
@@ -171,13 +185,29 @@ contract LosslessTestEnvironment is DSTest {
     function setUpStaking() public {
       lssStaking.initialize(lssReporting, lssController, stakingAmount);
       lssStaking.setStakingToken(lssToken);
-      lssStaking.setLosslessGovernance(lssGovernance);
     }
 
     /// @notice Sets up Lossless Governance
     function setUpGovernance() public {
+      lssGovernanceV1 = new LosslessGovernance();
+      lssGovernanceV2 = new LosslessGovernanceV2();
+
+      transparentProxyGov = new TransparentUpgradeableProxy(address(lssGovernanceV1), address(this), "");
+
+      proxyAdminGov = new ProxyAdmin();
+      
+      transparentProxyGov.changeAdmin(address(proxyAdminGov));
+
+      proxyAdminGov.upgrade(transparentProxyGov, address(lssGovernanceV2));
+
+      lssGovernance = LosslessGovernanceV2(address(transparentProxyGov));
+
       lssGovernance.initialize(lssReporting, lssController, lssStaking, walletDispute);
       lssGovernance.addCommitteeMembers(committeeMembers);
+      lssGovernance.setCompensationAmount(compensationPercentage);
+
+      lssReporting.setLosslessGovernance(lssGovernance);
+      lssStaking.setLosslessGovernance(lssGovernance);
     }
 
     /// @notice Sets up Lossless Controller
@@ -205,6 +235,8 @@ contract LosslessTestEnvironment is DSTest {
 
       lssController.setDexTransferThreshold(dexTransferTreshold);
       lssController.setSettlementTimeLock(settlementTimelock);
+
+      lssController.setExtraordinaryRetrievalPeriod(extraordinaryPeriod);
     }
 
     /// @notice Generate a report
@@ -214,7 +246,9 @@ contract LosslessTestEnvironment is DSTest {
       evm.warp(block.timestamp + settlementPeriod + 1);
       evm.startPrank(reporter);
       lssToken.approve(address(lssReporting), reportingAmount);
-      return lssReporting.report(ILERC20(reportedToken), reportedAdr);
+      uint256 reportId = lssReporting.report(ILERC20(reportedToken), reportedAdr);
+      evm.stopPrank();
+      return reportId;
     }
 
     /// @notice Solve Report Positively
@@ -226,10 +260,6 @@ contract LosslessTestEnvironment is DSTest {
         evm.prank(committeeMembers[i]);
         lssGovernance.committeeMemberVote(reportId, true);
       }
-
-      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
-      evm.prank(reportedToken.admin());
-      lssGovernance.tokenOwnersVote(reportId, true);
 
       lssGovernance.resolveReport(reportId);
     }
@@ -243,10 +273,6 @@ contract LosslessTestEnvironment is DSTest {
         evm.prank(committeeMembers[i]);
         lssGovernance.committeeMemberVote(reportId, false);
       }
-
-      (,,,, ILERC20 reportedToken,,) = lssReporting.getReportInfo(reportId);
-      evm.prank(reportedToken.admin());
-      lssGovernance.tokenOwnersVote(reportId, false);
 
       lssGovernance.resolveReport(reportId);
     }
@@ -284,5 +310,28 @@ contract LosslessTestEnvironment is DSTest {
         evm.warp(skipTime);
         evm.stopPrank();
       }
+    }
+
+    /// @notice Proposes wallet and retrieves funds
+    function retrieveFundsForReport(uint256 reportId, bool dispute, address retrieveTo) public {
+      evm.prank(address(this));
+      lssGovernance.proposeWallet(reportId, retrieveTo);
+
+      if (dispute) {
+        for (uint i = 0; i < committeeMembers.length; i++) {
+          evm.prank(committeeMembers[i]);
+          lssGovernance.rejectWallet(reportId);
+        }
+
+        evm.prank(randTokenAdmin);
+        lssGovernance.rejectWallet(reportId);
+
+        evm.prank(address(this));
+        lssGovernance.rejectWallet(reportId);
+      }
+
+      evm.warp(block.timestamp + walletDispute + 1 hours);
+      evm.prank(retrieveTo);
+      lssGovernance.retrieveFunds(reportId);
     }
 }

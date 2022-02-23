@@ -5,15 +5,16 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "../../Interfaces/ILosslessERC20.sol";
-import "../../Interfaces/ILosslessController.sol";
-import "../../Interfaces/ILosslessStaking.sol";
-import "../../Interfaces/ILosslessReporting.sol";
-import "../../Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/ILosslessERC20.sol";
+import "./Interfaces/ILosslessController.sol";
+import "./Interfaces/ILosslessStaking.sol";
+import "./Interfaces/ILosslessReporting.sol";
+import "./Interfaces/ILosslessGovernance.sol";
+import "./Interfaces/IOwnable.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
-contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
 
     uint256 override public constant LSS_TEAM_INDEX = 0;
     uint256 override public constant TOKEN_OWNER_INDEX = 1;
@@ -95,6 +96,11 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         _;
     }
 
+    modifier onlyTokenAdmin(ILERC20 _token) {
+        require(msg.sender == _token.admin(), "LSS: Must be Token Admin");
+        _;
+    }
+
     // --- ADMINISTRATION ---
 
     function pause() public onlyLosslessPauseAdmin  {
@@ -109,7 +115,7 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
     /// @notice This function gets the contract version
     /// @return Version of the contract
     function getVersion() external pure returns (uint256) {
-        return 1;
+        return 2;
     }
     
     /// @notice This function determines if an address belongs to the Committee
@@ -396,7 +402,7 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         for(uint256 i = 0; i < _addresses.length; i++) {
             address singleAddress = _addresses[i];
             Compensation storage addressCompensation = compensation[singleAddress]; 
-            losslessController.resolvedNegatively(singleAddress);      
+            losslessController.resolvedNegatively(singleAddress);
             addressCompensation.amount += compensationAmount;
             addressCompensation.payed = false;
         }
@@ -541,16 +547,6 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
 
     }
 
-    ///@notice This function verifies is an address belongs to a contract
-    ///@param _addr address to verify
-    function isContract(address _addr) private view returns (bool){
-         uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        return (size > 0);
-    }
-
     ///@notice This function is for committee members to claim their rewards
     ///@param _reportId report ID to claim reward from
     function claimCommitteeReward(uint256 _reportId) override public whenNotPaused {
@@ -595,5 +591,62 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
         emit LosslessClaim(reportTokens, _reportId, amountToClaim);
     }
 
-    function extaordinaryRetrieval(address[] calldata _address, ILERC20 _token) override external {}
+    // --- EXTRAORDINARY RETRIEVAL ---
+
+    /// @notice This function retrieves funds from a blacklisted account extraordinarily
+    /// @param _addresses Addreses to retrieve the blacklisted funds
+    /// @param _token Token to retrieve the funds from
+    function extaordinaryRetrieval(address[] calldata _addresses, ILERC20 _token) override public whenNotPaused onlyTokenAdmin(_token) {
+        uint256 fundsToRetrieve = 0;
+
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            require(losslessController.blacklist(_addresses[i]), "LSS: An address not in blacklist");
+            fundsToRetrieve += _token.balanceOf(_addresses[i]);
+        }
+
+        losslessController.extraordinaryRetrieval(_token, _addresses, fundsToRetrieve);
+        _token.transfer(msg.sender, fundsToRetrieve);
+    }
+
+    /// RETRIEVE COMPENSATION FOR CONTRACTS
+
+    /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
+    function retrieveCompensationForLERC20Contract(address _contract) public whenNotPaused {
+        require(_isContract(_contract), "LSS: Must be contract");
+        address tokenAdmin = ILERC20(_contract).admin();
+        require(msg.sender == tokenAdmin, "LSS: Must be token admin");
+        
+        _retrieveCompensationForContract(_contract, tokenAdmin);
+    }
+
+    /// @notice This lets an erroneously reported LERC20 contract to retrieve compensation
+    function retrieveCompensationForRegularContract(address _contract) public whenNotPaused {
+        require(_isContract(_contract), "LSS: Must be contract");
+        address tokenOwner = IOwnable(_contract).owner();
+        require(msg.sender == tokenOwner, "LSS: Must be token owner");
+
+        _retrieveCompensationForContract(_contract, tokenOwner);
+    }
+
+    /// @notice This lets an erroneously reported account to retrieve compensation
+    function _retrieveCompensationForContract(address token, address sender) private whenNotPaused {
+        require(!compensation[token].payed, "LSS: Already retrieved");
+        require(compensation[token].amount > 0, "LSS: No retribution assigned");
+        
+        compensation[token].payed = true;
+
+        losslessReporting.retrieveCompensation(sender, compensation[token].amount);
+
+        emit CompensationRetrieval(sender, compensation[token].amount);
+
+        compensation[token].amount = 0;
+    }
+
+    ///@notice This function verifies is an address belongs to a contract
+    ///@param _addr address to verify
+    function _isContract(address _addr) private view returns (bool) {
+        uint size;
+        assembly { size := extcodesize(_addr) }
+        return size > 0;
+    }
 }
