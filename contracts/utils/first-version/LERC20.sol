@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 
-import "../../Interfaces/ILosslessERC20.sol";
-import "../../Interfaces/ILosslessController.sol";
+import "../../interfaces/ILosslessERC20.sol";
+import "../../interfaces/ILosslessController.sol";
 
 contract LERC20 is Context, ILERC20 {
     mapping (address => uint256) private _balances;

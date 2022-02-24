@@ -15,6 +15,8 @@ import "../../utils/hack-mitigation-protocol/LosslessStaking.sol";
 import "../../utils/mocks/LERC20BurnableMock.sol";
 import "../../utils/mocks/LERC20MintableMock.sol";
 import "../../LosslessGovernanceV2.sol";
+import "../../LosslessReportingV2.sol";
+import "../../LosslessStakingV2.sol";
 import "../../LosslessControllerV4.sol";
 
 import "./IEvm.sol";
@@ -23,18 +25,26 @@ import "ds-test/test.sol";
 contract LosslessTestEnvironment is DSTest {
     LosslessControllerV1 private lssControllerV1;
     LosslessControllerV4 private lssControllerV4;
+    TransparentUpgradeableProxy private transparentProxy;
+    ProxyAdmin private proxyAdmin;
+    LosslessControllerV4 public lssController;
 
-    LosslessReporting public lssReporting;
+    LosslessReporting public lssReportingV1;
+    LosslessReportingV2 public lssReportingV2;
+    TransparentUpgradeableProxy private transparentProxyStak;
+    ProxyAdmin private proxyAdminStak;
+    LosslessReportingV2 public lssReporting;
+
+    LosslessStaking public lssStakingV1;
+    LosslessStakingV2 public lssStakingV2;
+    TransparentUpgradeableProxy private transparentProxyRep;
+    ProxyAdmin private proxyAdminRep;
+    LosslessStakingV2 public lssStaking;
+
     LosslessGovernance public lssGovernanceV1;
     LosslessGovernanceV2 public lssGovernanceV2;
-    LosslessStaking public lssStaking;
-
-    TransparentUpgradeableProxy private transparentProxy;
     TransparentUpgradeableProxy private transparentProxyGov;
-    ProxyAdmin private proxyAdmin;
     ProxyAdmin private proxyAdminGov;
-
-    LosslessControllerV4 public lssController;
     LosslessGovernanceV2 public lssGovernance;
 
     LERC20BurnableMock public lerc20Burnable;
@@ -85,6 +95,29 @@ contract LosslessTestEnvironment is DSTest {
 
     function setUp() public {
 
+      // Set up Controller
+      setUpController();
+
+      // Set up Tokens
+      setUpTokens();
+
+      // Set up Reporting
+      setUpReporting();
+
+      // Set up Staking
+      setUpStaking();
+
+      // Set up Governance
+      setUpGovernance();
+
+      // Set up Controller
+      configureControllerVars();
+    }
+
+    /// ----- Helpers ------
+
+    /// @notice Sets up Lossless Controller
+    function setUpController() public {
       lssControllerV1 = new LosslessControllerV1();
 
       lssControllerV4 = new LosslessControllerV4();
@@ -103,11 +136,11 @@ contract LosslessTestEnvironment is DSTest {
       proxyAdmin.upgrade(transparentProxy, address(lssControllerV4));
 
       lssController = LosslessControllerV4(address(transparentProxy));
-      lssReporting = new LosslessReporting();
-      lssStaking = new LosslessStaking();
-
+    }
+    
+    /// @notice Sets up Environment tokens
+    function setUpTokens() public {
       // Set up tokens
-
       lssToken = new LERC20(
         totalSupply,
         "Lossless Token",
@@ -153,24 +186,22 @@ contract LosslessTestEnvironment is DSTest {
         "ERCT",
         totalSupply
       );
-
-      // Set up Reporting
-      setUpReporting();
-
-      // Set up Staking
-      setUpStaking();
-
-      // Set up Governance
-      setUpGovernance();
-
-      // Set up Controller
-      setUpController();
     }
-
-    /// ----- Helpers ------
 
     /// @notice Sets up Lossless Reporting
     function setUpReporting() public {
+      lssReportingV1 = new LosslessReporting();
+      lssReportingV2 = new LosslessReportingV2();
+
+      transparentProxyRep = new TransparentUpgradeableProxy(address(lssReportingV1), address(this), "");
+
+      proxyAdminRep = new ProxyAdmin();
+      
+      transparentProxyRep.changeAdmin(address(proxyAdminRep));
+
+      proxyAdminRep.upgrade(transparentProxyRep, address(lssReportingV2));
+
+      lssReporting = LosslessReportingV2(address(transparentProxyRep));
       lssReporting.initialize(lssController);
       lssReporting.setReportLifetime(reportLifetime);
       lssReporting.setReportingAmount(reportingAmount);
@@ -183,6 +214,19 @@ contract LosslessTestEnvironment is DSTest {
 
     /// @notice Sets up Lossless Staking
     function setUpStaking() public {
+      lssStakingV1 = new LosslessStaking();
+      lssStakingV2 = new LosslessStakingV2();
+
+      transparentProxyStak = new TransparentUpgradeableProxy(address(lssStakingV1), address(this), "");
+
+      proxyAdminStak = new ProxyAdmin();
+      
+      transparentProxyStak.changeAdmin(address(proxyAdminStak));
+
+      proxyAdminStak.upgrade(transparentProxyStak, address(lssStakingV2));
+
+      lssStaking = LosslessStakingV2(address(transparentProxyStak));
+
       lssStaking.initialize(lssReporting, lssController, stakingAmount);
       lssStaking.setStakingToken(lssToken);
     }
@@ -211,7 +255,7 @@ contract LosslessTestEnvironment is DSTest {
     }
 
     /// @notice Sets up Lossless Controller
-    function setUpController() public {
+    function configureControllerVars() public {
       lssController.setTokenMintPeriod(lerc20Mintable, mintPeriod);
       lssController.setTokenMintLimit(lerc20Mintable, mintAndBurnLimit);
       lssController.proposeNewSettlementPeriod(lerc20Mintable, settlementPeriod);

@@ -15,6 +15,7 @@ contract EnvironmentTests is LosslessTestEnvironment {
 
     /// @notice Test deployed Reporting Config
     function testReportingDeploy() public {
+      assertEq(lssReporting.getVersion() , 2);
       assertEq(lssReporting.reportLifetime(), reportLifetime);
       assertEq(lssReporting.reportingAmount(), reportingAmount);
       assertEq(address(lssReporting.losslessController()), address(lssController));
@@ -31,6 +32,7 @@ contract EnvironmentTests is LosslessTestEnvironment {
 
     /// @notice Test deployed Staking Contract
     function testStakingDeploy() public {
+      assertEq(lssStaking.getVersion() , 2);
       assertEq(lssStaking.stakingAmount(), stakingAmount);
       assertEq(address(lssStaking.stakingToken()), address(lssToken));
       assertEq(address(lssStaking.losslessReporting()), address(lssReporting));
@@ -40,6 +42,7 @@ contract EnvironmentTests is LosslessTestEnvironment {
 
     /// @notice Test deployed Governance Contract
     function testGovernanceDeploy() public {
+      assertEq(lssGovernance.getVersion() , 2);
       assertEq(lssGovernance.walletDisputePeriod(), walletDispute);
       assertEq(address(lssGovernance.losslessStaking()), address(lssStaking));
       assertEq(address(lssGovernance.losslessReporting()), address(lssReporting));
