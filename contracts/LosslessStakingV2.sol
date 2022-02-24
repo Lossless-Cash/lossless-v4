@@ -11,6 +11,7 @@ import "./interfaces/ILosslessReporting.sol";
 import "./interfaces/ILosslessGovernance.sol";
 
 import "./libraries/safeTransfer.sol";
+import "./libraries/UniswapV2OracleLibrary.sol";
 
 /// @title Lossless Staking Contract
 /// @notice The Staking contract is in charge of handling the staking done on reports
