@@ -11,6 +11,7 @@ import "./interfaces/ILosslessStaking.sol";
 import "./interfaces/ILosslessReporting.sol";
 import "./interfaces/ILosslessGovernance.sol";
 import "./interfaces/IOwnable.sol";
+
 import "./libraries/safeTransfer.sol";
 
 /// @title Lossless Governance Contract
