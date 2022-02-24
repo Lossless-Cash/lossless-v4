@@ -5,13 +5,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessController.sol";
-import "./Interfaces/ILosslessStaking.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./Interfaces/IOwnable.sol";
-import "./safeTransfer.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessController.sol";
+import "./interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./interfaces/IOwnable.sol";
+import "./libraries/safeTransfer.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
