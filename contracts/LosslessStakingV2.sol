@@ -98,6 +98,7 @@ contract LosslessStakingV2 is ILssStaking, Initializable, ContextUpgradeable, Pa
     function setStakingToken(ILERC20 _stakingToken) override public onlyLosslessAdmin {
         require(address(_stakingToken) != address(0), "LERC20: Cannot be zero address");
         stakingToken = _stakingToken;
+        //Add first oracle update
         emit NewStakingToken(_stakingToken);
     }
 
