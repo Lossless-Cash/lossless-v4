@@ -21,10 +21,11 @@
     "@openzeppelin/hardhat-upgrades": "^1.13.0",
     "ethereum-waffle": "^3.3.0",
     "hardhat": "^2.8.3",
-    "hardhat-gas-reporter": "^1.0.7",
     "hardhat-abi-exporter": "^2.8.0",
+    "hardhat-gas-reporter": "^1.0.7",
     "solidity-coverage": "^0.7.18",
-    "solidity-parser-antlr": "^0.4.11"
+    "solidity-parser-antlr": "^0.4.11",
+    "uniswap": "^0.0.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
