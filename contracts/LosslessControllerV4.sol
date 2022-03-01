@@ -5,12 +5,12 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./Interfaces/ILosslessStaking.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/IProtectionStrategy.sol";
-import "./safeTransfer.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/IProtectionStrategy.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../../Interfaces/ILosslessERC20.sol";
-import "../../Interfaces/ILosslessController.sol";
-import "../../Interfaces/ILosslessGovernance.sol";
-import "../../Interfaces/ILosslessReporting.sol";
+import "../../interfaces/ILosslessERC20.sol";
+import "../../interfaces/ILosslessController.sol";
+import "../../interfaces/ILosslessGovernance.sol";
+import "../../interfaces/ILosslessReporting.sol";
 
 /// @title Lossless Reporting Contract
 /// @author Lossless.cash

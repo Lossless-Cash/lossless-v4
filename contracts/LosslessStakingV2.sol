@@ -5,11 +5,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessController.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./safeTransfer.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessController.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Staking Contract
 /// @notice The Staking contract is in charge of handling the staking done on reports
@@ -147,9 +147,8 @@ contract LosslessStakingV2 is ILssStaking, Initializable, ContextUpgradeable, Pa
         stakeInfo.staked = true;
 
         reportCoefficient[_reportId] += stakerCoefficient;
-        
-        require(stakingToken.transferFrom(msg.sender, address(this), stakingAmount),
-        "LSS: Staking transfer failed");
+
+        TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), stakingAmount);
 
         stakeInfo.totalStakedOnReport += stakingAmount;
         stakedOnReport[msg.sender].report[_reportId] = stakingAmount;
