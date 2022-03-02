@@ -5,11 +5,12 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./Interfaces/ILosslessStaking.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/IProtectionStrategy.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/IProtectionStrategy.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Controller Contract
 /// @notice The controller contract is in charge of the communication and senstive data among all Lossless Environment Smart Contracts
@@ -478,7 +479,7 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     /// @param _token Token to retrieve the funds froms
     function extraordinaryRetrieval(ILERC20 _token, address[] calldata addresses, uint256 fundsToRetrieve) override public whenNotPaused onlyLosslessEnv {
         _token.transferOutBlacklistedFunds(addresses);
-        _token.transfer(address(losslessGovernance), fundsToRetrieve);
+        TransferHelper.safeTransfer(address(_token), address(losslessGovernance), fundsToRetrieve);
     }
 
     // LOCKs & QUEUES
@@ -535,9 +536,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
         uint256 toLssReporting = totalAmount * reporterReward / HUNDRED;
         uint256 toLssGovernance = totalAmount - toLssStaking - toLssReporting;
 
-        require(_token.transfer(address(losslessStaking), toLssStaking), "LSS: Staking retrieval failed");
-        require(_token.transfer(address(losslessReporting), toLssReporting), "LSS: Reporting retrieval failed");
-        require(_token.transfer(address(losslessGovernance), toLssGovernance), "LSS: Governance retrieval failed");
+        TransferHelper.safeTransfer(address(_token), address(losslessStaking), toLssStaking);
+        TransferHelper.safeTransfer(address(_token), address(losslessReporting), toLssReporting);
+        TransferHelper.safeTransfer(address(_token), address(losslessGovernance), toLssGovernance);
 
         uint256 committeeRewardFunds;
 

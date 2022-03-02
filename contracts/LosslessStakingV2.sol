@@ -5,15 +5,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "../../interfaces/ILosslessERC20.sol";
-import "../../interfaces/ILosslessController.sol";
-import "../../interfaces/ILosslessGovernance.sol";
-import "../../interfaces/ILosslessReporting.sol";
-import "../../interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessController.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Staking Contract
 /// @notice The Staking contract is in charge of handling the staking done on reports
-contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, PausableUpgradeable {
+contract LosslessStakingV2 is ILssStaking, Initializable, ContextUpgradeable, PausableUpgradeable {
 
     struct Stake {
         mapping(uint256 => StakeInfo) stakeInfoOnReport;
@@ -147,9 +147,8 @@ contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, Paus
         stakeInfo.staked = true;
 
         reportCoefficient[_reportId] += stakerCoefficient;
-        
-        require(stakingToken.transferFrom(msg.sender, address(this), stakingAmount),
-        "LSS: Staking transfer failed");
+
+        TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), stakingAmount);
 
         stakeInfo.totalStakedOnReport += stakingAmount;
         stakedOnReport[msg.sender].report[_reportId] = stakingAmount;
@@ -187,10 +186,8 @@ contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, Paus
 
         (,,,, ILERC20 reportTokens,,) = losslessReporting.getReportInfo(_reportId);
 
-        require(reportTokens.transfer(msg.sender, amountToClaim),
-        "LSS: Reward transfer failed");
-        require(stakingToken.transfer(msg.sender, stakedOnReport[msg.sender].report[_reportId]),
-        "LSS: Staking transfer failed");
+        TransferHelper.safeTransfer(address(reportTokens), msg.sender, amountToClaim);
+        TransferHelper.safeTransfer(address(stakingToken), msg.sender, stakedOnReport[msg.sender].report[_reportId]);
 
         emit StakerClaim(msg.sender, reportTokens, _reportId, amountToClaim);
     }
@@ -200,7 +197,7 @@ contract LosslessStaking is ILssStaking, Initializable, ContextUpgradeable, Paus
     /// @notice This function returns the contract version
     /// @return Returns the Smart Contract version
     function getVersion() override public pure returns (uint256) {
-        return 1;
+        return 2;
     }
 
     

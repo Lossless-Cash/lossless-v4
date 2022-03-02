@@ -5,12 +5,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./Interfaces/ILosslessERC20.sol";
-import "./Interfaces/ILosslessController.sol";
-import "./Interfaces/ILosslessStaking.sol";
-import "./Interfaces/ILosslessReporting.sol";
-import "./Interfaces/ILosslessGovernance.sol";
-import "./Interfaces/IOwnable.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessController.sol";
+import "./interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessReporting.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./interfaces/IOwnable.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
@@ -489,8 +490,7 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
 
         proposedWallet.status = true;
 
-        require(reportTokens.transfer(msg.sender, proposedWallet.retrievalAmount), 
-        "LSS: Funds retrieve failed");
+        TransferHelper.safeTransfer(address(reportTokens), msg.sender, proposedWallet.retrievalAmount);
 
         emit FundsRetrieval(_reportId, proposedWallet.retrievalAmount);
     }
@@ -566,7 +566,7 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
 
         reportVote.committeeMemberClaimed[msg.sender] = true;
 
-        require(reportTokens.transfer(msg.sender, compensationPerMember), "LSS: Reward transfer failed");
+        TransferHelper.safeTransfer(address(reportTokens), msg.sender, compensationPerMember);
 
         emit CommitteeMemberClaim(_reportId, msg.sender, compensationPerMember);
     }
@@ -585,8 +585,8 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
 
         uint256 amountToClaim = reportVote.amountReported * losslessReporting.losslessReward() / HUNDRED;
         reportVote.losslessPayed = true;
-        require(reportTokens.transfer(losslessController.admin(), amountToClaim), 
-        "LSS: Reward transfer failed");
+
+        TransferHelper.safeTransfer(address(reportTokens), losslessController.admin(), amountToClaim);
 
         emit LosslessClaim(reportTokens, _reportId, amountToClaim);
     }
@@ -605,7 +605,7 @@ contract LosslessGovernanceV2 is ILssGovernance, Initializable, AccessControlUpg
         }
 
         losslessController.extraordinaryRetrieval(_token, _addresses, fundsToRetrieve);
-        _token.transfer(msg.sender, fundsToRetrieve);
+        TransferHelper.safeTransfer(address(_token), msg.sender, fundsToRetrieve);
     }
 
     /// RETRIEVE COMPENSATION FOR CONTRACTS

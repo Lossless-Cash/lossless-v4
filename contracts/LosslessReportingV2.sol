@@ -5,15 +5,16 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../../interfaces/ILosslessERC20.sol";
-import "../../interfaces/ILosslessController.sol";
-import "../../interfaces/ILosslessGovernance.sol";
-import "../../interfaces/ILosslessReporting.sol";
+import "./interfaces/ILosslessERC20.sol";
+import "./interfaces/ILosslessController.sol";
+import "./interfaces/ILosslessStaking.sol";
+import "./interfaces/ILosslessGovernance.sol";
+import "./libraries/TransferHelper.sol";
 
 /// @title Lossless Reporting Contract
 /// @author Lossless.cash
 /// @notice The Reporting smart contract is in charge of handling all the parts related to creating new reports
-contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, PausableUpgradeable {
+contract LosslessReportingV2 is ILssReporting, Initializable, ContextUpgradeable, PausableUpgradeable {
     uint256 override public reporterReward;
     uint256 override public losslessReward;
     uint256 override public stakersReward;
@@ -173,7 +174,7 @@ contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, 
     /// @notice This function gets the contract version
     /// @return Version of the contract
     function getVersion() override external pure returns (uint256) {
-        return 1;
+        return 2;
     }
 
     /// @notice This function will return the reward amount for all parties
@@ -241,7 +242,7 @@ contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, 
         reportInfo[reportId].reportTimestamps = block.timestamp;
         reportInfo[reportId].reportTokens = _token;
 
-        require(stakingToken.transferFrom(msg.sender, address(this), reportingAmount), "LSS: Reporting stake failed");
+        TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), reportingAmount);
 
         losslessController.addToBlacklist(_account);
         reportInfo[reportId].reportedAddress = _account;
@@ -298,8 +299,8 @@ contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, 
 
         uint256 amountToClaim = reporterClaimableAmount(_reportId);
 
-        require(queriedReport.reportTokens.transfer(msg.sender, amountToClaim), "LSS: Token transfer failed");
-        require(stakingToken.transfer(msg.sender, reportingAmount), "LSS: Reporting stake failed");
+        TransferHelper.safeTransfer(address(queriedReport.reportTokens), msg.sender, amountToClaim);
+        TransferHelper.safeTransfer(address(stakingToken), msg.sender, reportingAmount);
         emit ReporterClaim(msg.sender, _reportId, amountToClaim);
     }
 
@@ -317,7 +318,7 @@ contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, 
     /// @param _adr retribution address
     /// @param _amount amount to be retrieved
     function retrieveCompensation(address _adr, uint256 _amount) override public onlyLosslessGov {
-        require(stakingToken.transfer(_adr, _amount), "LSS: Compensation retrieve fail");
+        TransferHelper.safeTransfer(address(stakingToken), _adr, _amount);
         emit CompensationRetrieve(_adr, _amount);
     }
 
