@@ -285,6 +285,11 @@ contract LosslessTestEnvironment is DSTest {
 
     /// @notice Generate a report
     function generateReport(address reportedToken, address reportedAdr, address reporter) public returns (uint256) {
+      evm.assume(reportedAdr != address(lssToken));
+      evm.assume(reportedAdr != address(lssReporting));
+      evm.assume(reportedAdr != address(lssGovernance));
+      evm.assume(reportedAdr != address(lssController));
+      evm.assume(reportedAdr != address(lssStaking));
       lssToken.transfer(reporter, reportingAmount);
       lerc20Token.transfer(reportedAdr, reportedAmount);
       evm.warp(block.timestamp + settlementPeriod + 1);
