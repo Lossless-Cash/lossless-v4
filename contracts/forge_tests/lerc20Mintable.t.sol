@@ -24,6 +24,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @dev Should not revert
     /// @param mintAmount Random mint amount
     function testLERC20Mint(uint8 mintAmount, address randAddress) public {
+      evm.assume(randAddress != address(0));
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       lerc20Mintable.mint(randAddress, mintAmount);
       assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAmount);
@@ -33,6 +34,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @dev Should not revert
     /// @param mintAmount Random mint amount
     function testLERC20MintNoLimit(uint8 mintAmount, address randAddress) public mintLimitDeactivated {
+      evm.assume(randAddress != address(0));
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       lerc20Mintable.mint(randAddress, mintAmount);
       assertEq(lerc20Mintable.balanceOf(randAddress), balanceBefore + mintAmount);
@@ -51,6 +53,7 @@ contract LERC20MintableTests is LosslessTestEnvironment {
     /// @dev Should revert
     /// @param mintAmount Random mint amount
     function testLERC20MintOverLimitNoLimit(uint8 mintAmount, address randAddress) public mintLimitDeactivated {
+      evm.assume(randAddress != address(0));
       uint256 balanceBefore = lerc20Mintable.balanceOf(randAddress);
       lerc20Mintable.mint(randAddress, mintAndBurnLimit + 1);
     }

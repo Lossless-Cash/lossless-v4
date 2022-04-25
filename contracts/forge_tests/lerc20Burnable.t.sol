@@ -73,7 +73,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
     /// @dev Should revert
     /// @param randAddress Random address
     function testLERC20BurnOverLimitSingleNoLimit(address randAddress) public burnLimitDeactivated{
-
+      evm.assume(randAddress != address(0));
       lerc20Burnable.transfer(randAddress, mintAndBurnLimit + 1);
     
       evm.warp(block.timestamp + burnPeriod + 1);
@@ -129,6 +129,7 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
     /// @dev Should not revert
     /// @param burnAmount Random burn amount
     function testLERC20BurnFrom(uint8 burnAmount, address randAddress) public {
+      evm.assume(randAddress != address(0));
       lerc20Burnable.transfer(randAddress, burnAmount + 10000);
       uint256 balanceBefore = lerc20Burnable.balanceOf(randAddress);
       evm.prank(randAddress);
@@ -167,6 +168,8 @@ contract LERC20BurnableTests is LosslessTestEnvironment {
     /// @param randAddress Random address
     /// @param burnAmt Random burn amount
     function testLERC20BurnFromBlacklisted(address randAddress, uint256 burnAmt) public {
+      evm.assume(randAddress != address(lerc20Token));
+      evm.assume(randAddress != address(lssToken));
       if (randAddress != address(0)) {
         generateReport(address(lerc20Token), randAddress, reporter);
         evm.expectRevert("LSS: Cannot burn in blacklist");
