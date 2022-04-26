@@ -12,8 +12,8 @@ import "../../utils/hack-mitigation-protocol/LosslessGovernance.sol";
 import "../../utils/hack-mitigation-protocol/LosslessReporting.sol";
 import "../../utils/hack-mitigation-protocol/LosslessStaking.sol";
 
-import "../../utils/mocks/LERC20BurnableMock.sol";
-import "../../utils/mocks/LERC20MintableMock.sol";
+import "../../LERC20Burnable.sol";
+import "../../LERC20Mintable.sol";
 import "../../LosslessGovernanceV2.sol";
 import "../../LosslessReportingV2.sol";
 import "../../LosslessStakingV2.sol";
@@ -47,8 +47,8 @@ contract LosslessTestEnvironment is DSTest {
     ProxyAdmin private proxyAdminGov;
     LosslessGovernanceV2 public lssGovernance;
 
-    LERC20BurnableMock public lerc20Burnable;
-    LERC20MintableMock public lerc20Mintable;
+    LERC20Burnable public lerc20Burnable;
+    LERC20Mintable public lerc20Mintable;
     LERC20 public lssToken;
     LERC20 public lerc20Token;
     ERC20 public erc20Token;
@@ -161,7 +161,7 @@ contract LosslessTestEnvironment is DSTest {
         address(lssController)
       );
 
-      lerc20Burnable = new LERC20BurnableMock(
+      lerc20Burnable = new LERC20Burnable(
         totalSupply,
         "LERC20 Burnable",
         "lBURN",
@@ -171,7 +171,7 @@ contract LosslessTestEnvironment is DSTest {
         address(lssController)
       );
 
-      lerc20Mintable = new LERC20MintableMock(
+      lerc20Mintable = new LERC20Mintable(
         totalSupply,
         "LERC20 Mintable",
         "lMINT",
@@ -285,6 +285,11 @@ contract LosslessTestEnvironment is DSTest {
 
     /// @notice Generate a report
     function generateReport(address reportedToken, address reportedAdr, address reporter) public returns (uint256) {
+      evm.assume(reportedAdr != address(lssToken));
+      evm.assume(reportedAdr != address(lssReporting));
+      evm.assume(reportedAdr != address(lssGovernance));
+      evm.assume(reportedAdr != address(lssController));
+      evm.assume(reportedAdr != address(lssStaking));
       lssToken.transfer(reporter, reportingAmount);
       lerc20Token.transfer(reportedAdr, reportedAmount);
       evm.warp(block.timestamp + settlementPeriod + 1);

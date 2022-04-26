@@ -4,7 +4,25 @@ pragma solidity ^0.8.0;
 import "./utils/first-version/LERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
-abstract contract LERC20Burnable is Context, LERC20 {
+contract LERC20Burnable is Context, LERC20 {
+
+    constructor(
+    uint256 totalSupply_, 
+    string memory name_, 
+    string memory symbol_, 
+    address admin_, 
+    address recoveryAdmin_, 
+    uint256 timelockPeriod_, 
+    address lossless_
+    ) LERC20(
+    totalSupply_, 
+    name_, 
+    symbol_, 
+    admin_, 
+    recoveryAdmin_, 
+    timelockPeriod_, 
+    lossless_
+    ) {}
 
     modifier lssBurn(address account, uint256 amount) {
         if (isLosslessOn) {
