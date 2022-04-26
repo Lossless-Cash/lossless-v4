@@ -55,7 +55,6 @@ interface ILssController {
     function beforeIncreaseAllowance(address _msgSender, address _spender, uint256 _addedValue) external;
     function beforeDecreaseAllowance(address _msgSender, address _spender, uint256 _subtractedValue) external;
     function beforeMint(address _to, uint256 _amount) external;
-    function beforeMint(address msgSender, address _to, uint256 _amount) external;
     function beforeBurn(address _account, uint256 _amount) external;
     function afterTransfer(address _sender, address _recipient, uint256 _amount) external;
     function setProtectedAddress(ILERC20 _token, address _protectedAddress, ProtectionStrategy _strategy) external;

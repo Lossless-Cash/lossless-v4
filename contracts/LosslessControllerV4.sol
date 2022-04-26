@@ -628,10 +628,9 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
     }
 
     /// @notice This hook verifies that a token is able to be minted within the set rules.
-    function beforeMint(address msgSender, address _to, uint256 _amount) override external {
+    function beforeMint(address _to, uint256 _amount) override external {
         require(!blacklist[_to], "LSS: Cannot mint to blacklisted");
-        require(!blacklist[msgSender], "LSS: Blacklisted cannot mint");
-
+        
         ILERC20 token = ILERC20(msg.sender);
 
         MintableTokenConfig storage config = mintableTokenConfig[token]; 
@@ -674,8 +673,6 @@ contract LosslessControllerV4 is ILssController, Initializable, ContextUpgradeab
 
     // The following before hooks are in place as a placeholder for future products.
     // Also to preserve legacy LERC20 compatibility
-
-    function beforeMint(address _to, uint256 _amount) override external {}
 
     function beforeApprove(address _sender, address _spender, uint256 _amount) override external {}
 

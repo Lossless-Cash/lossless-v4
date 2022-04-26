@@ -32,9 +32,9 @@ contract LERC20MintableBurnable is Context, LERC20 {
     }
 
 
-    modifier lssMint(address msgSender, address account, uint256 amount) {
+    modifier lssMint(address account, uint256 amount) {
         if (isLosslessOn) {
-            lossless.beforeMint(msgSender, account, amount);
+            lossless.beforeMint(account, amount);
         } 
         _;
     }
@@ -53,7 +53,7 @@ contract LERC20MintableBurnable is Context, LERC20 {
         _burn(account, amount);
     }
 
-    function mint(address to, uint256 amount) public virtual lssMint(_msgSender(), to, amount) {
+    function mint(address to, uint256 amount) public virtual lssMint(to, amount) {
         require(_msgSender() == admin, "LERC20: Must be admin");
         _mint(to, amount);
     }
