@@ -113,7 +113,6 @@ contract LERC20Burnable is Context {
         _;
     }
 
-
     // --- LOSSLESS management ---
     function transferOutBlacklistedFunds(address[] calldata from) external {
         require(_msgSender() == address(lossless), "LERC20: Only lossless contract");

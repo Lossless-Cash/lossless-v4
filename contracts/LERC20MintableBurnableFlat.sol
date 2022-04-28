@@ -116,15 +116,12 @@ contract LERC20MintableBurnable is Context {
         _;
     }
 
-
     modifier lssMint(address account, uint256 amount) {
         if (isLosslessOn) {
             lossless.beforeMint(account, amount);
         } 
         _;
     }
-
-
 
     // --- LOSSLESS management ---
     function transferOutBlacklistedFunds(address[] calldata from) external {
