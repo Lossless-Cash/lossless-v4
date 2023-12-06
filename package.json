@@ -19,7 +19,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.4.2",
     "@openzeppelin/hardhat-defender": "^1.6.0",
     "@openzeppelin/hardhat-upgrades": "^1.13.0",
-    "ethereum-waffle": "^3.3.0",
+    "ethereum-waffle": "^4.0.0",
     "hardhat": "^2.8.3",
     "hardhat-gas-reporter": "^1.0.7",
     "hardhat-abi-exporter": "^2.8.0",
